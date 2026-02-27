@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP PR Generator v4 - OCR to Purchase Requisition</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle { color: #666; font-size: 1em; }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .config-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .config-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-family: monospace;
+            background: #f8f9ff;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .warning-box strong { color: #856404; }
+        .warning-box a { color: #1e3c72; font-weight: 600; }
+
+        .upload-area {
+            border: 3px dashed #1e3c72;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #2a5298;
+            background: #f0f2ff;
+        }
+
+        .upload-icon { font-size: 3em; margin-bottom: 10px; }
+        .upload-text { font-size: 1.1em; color: #333; font-weight: 600; }
+        .upload-subtext { color: #666; font-size: 0.9em; margin-top: 5px; }
+        .file-input { display: none; }
+
+        .files-list { margin-top: 15px; display: none; }
+
+        .file-item {
+            background: #f8f9ff;
+            border: 1px solid #e0e0e0;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        .file-item-status {
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-processing { background: #d1ecf1; color: #0c5460; }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1em;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:hover:not(:disabled) { transform: translateY(-2px); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* SAP Config Section */
+        .sap-config-section {
+            display: none;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #1e3c72;
+        }
+
+        .section-title h2 {
+            font-size: 1.3em;
+            color: #1e3c72;
+        }
+
+        .file-counter {
+            background: #f8f9ff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #1e3c72;
+            font-size: 0.9em;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Search DB Section */
+        .search-db-section {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-db-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .search-db-title {
+            font-weight: 700;
+            color: #155724;
+            font-size: 1em;
+        }
+
+        .search-db-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-search-db {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .btn-search-db:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        .btn-search-db:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-test-api {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .search-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            display: none;
+        }
+
+        .search-status.success { background: #d4edda; color: #155724; display: block; }
+        .search-status.error { background: #f8d7da; color: #721c24; display: block; }
+        .search-status.loading { background: #d1ecf1; color: #0c5460; display: block; }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 0.8em;
+        }
+
+        .form-group label .required { color: #dc3545; }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.85em;
+        }
+
+        .form-group input:focus { outline: none; border-color: #1e3c72; }
+        .form-group input.readonly { background: #f5f5f5; }
+
+        /* Items Section */
+        .items-section { margin-top: 20px; }
+
+        .items-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 10px 10px 0 0;
+            font-weight: 600;
+        }
+
+        .items-container {
+            border: 2px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .item-card {
+            background: #fafbff;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .item-card:last-child { border-bottom: none; }
+
+        .item-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #ccc;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .item-number {
+            background: #1e3c72;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+
+        .item-description {
+            flex: 1;
+            margin-left: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .item-serial {
+            background: #ffc107;
+            color: #212529;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .item-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+        }
+
+        .item-form-group label {
+            font-size: 0.75em;
+            color: #666;
+            margin-bottom: 3px;
+            display: block;
+        }
+
+        .item-form-group input, .item-form-group select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.85em;
+        }
+
+        .item-form-group input.filled-from-db {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .acct-assignment-section {
+            background: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .acct-assignment-title {
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 8px;
+            font-size: 0.85em;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 15px;
+            font-size: 0.9em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn:hover { transform: translateY(-2px); }
+
+        /* JSON Preview */
+        .json-preview {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .json-preview pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.8em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        .loading-dark {
+            border: 2px solid rgba(0,0,0,.1);
+            border-top-color: #333;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .date-display {
+            font-size: 0.7em;
+            color: #28a745;
+            margin-top: 2px;
+        }
+
+        /* OCR Info */
+        .ocr-info-box {
+            background: #f8f9ff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+        }
+
+        .ocr-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+        }
+
+        .ocr-info-item {
+            display: flex;
+            gap: 8px;
+        }
+
+        .ocr-info-label { font-weight: 600; color: #666; }
+        .ocr-info-value { color: #333; }
+
+        @media (max-width: 768px) {
+            .config-row { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr 1fr; }
+            .item-form-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏭 SAP PR Generator</div>
+            <div class="subtitle">OCR Invoice → SAP Purchase Requisition | Database Auto-Fill</div>
+        </div>
+
+        <div class="upload-section">
+            <form id="uploadForm">
+                <div class="config-row">
+                    <div class="config-group">
+                        <label>🔗 OCR Webhook URL</label>
+                        <input type="text" id="webhookUrl" class="config-input" value="http://172.32.201.106:5678/webhook/7c4fd4bc-c51f-4890-b6ab-86dfad5ce8f9">
+                    </div>
+                    <div class="config-group">
+                        <label>🔍 Database API URL</label>
+                        <input type="text" id="apiUrl" class="config-input" value="http://172.32.201.106:3001/api">
+                    </div>
+                </div>
+
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">คลิกเพื่อเลือกไฟล์ PDF Invoice</div>
+                    <div class="upload-subtext">หรือลากไฟล์มาวางที่นี่</div>
+                    <input type="file" id="fileInput" class="file-input" accept=".pdf" multiple>
+                </div>
+                
+                <div class="files-list" id="filesList"></div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                    <span id="btnText">🔍 เริ่มสแกน OCR</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- SAP Config Section -->
+        <div class="sap-config-section" id="sapConfigSection">
+            <div class="section-header">
+                <div class="section-title">
+                    <h2>⚙️ SAP Purchase Requisition</h2>
+                </div>
+                <div class="file-counter" id="fileCounter">1 / 1</div>
+            </div>
+
+            <div class="navigation">
+                <button class="nav-btn" id="prevBtn" onclick="navigatePrev()">← ก่อนหน้า</button>
+                <button class="nav-btn" id="nextBtn" onclick="navigateNext()">ถัดไป →</button>
+            </div>
+
+            <!-- OCR Info -->
+            <div class="ocr-info-box" id="ocrInfoBox">
+                <div class="ocr-info-grid" id="ocrInfoGrid"></div>
+            </div>
+
+            <!-- Search DB Section -->
+            <div class="search-db-section">
+                <div class="search-db-header">
+                    <div class="search-db-title">🔍 ค้นหาข้อมูลจาก Database (Serial Number)</div>
+                    <div class="search-db-buttons">
+                        <button class="btn-test-api" onclick="testAPIConnection()">🔌 ทดสอบ API</button>
+                        <button class="btn-search-db" id="searchDbBtn" onclick="searchFromDatabase()">
+                            <span id="searchBtnText">🔎 ค้นหาและเติมข้อมูล</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="search-status" id="searchStatus"></div>
+            </div>
+
+            <!-- PR Header -->
+            <h4 style="color: #1e3c72; margin-bottom: 10px;">📝 PR Header</h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>PR Type</label>
+                    <input type="text" id="prType" value="NB">
+                </div>
+                <div class="form-group">
+                    <label>PR Description</label>
+                    <input type="text" id="prDescription">
+                </div>
+            </div>
+
+            <!-- Default Values -->
+            <h4 style="color: #1e3c72; margin: 15px 0 10px;">🔧 ค่าเริ่มต้น (Apply ไปทุก Item)</h4>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Plant</label>
+                    <input type="text" id="defaultPlant" placeholder="1021">
+                </div>
+                <div class="form-group">
+                    <label>Purch. Org</label>
+                    <input type="text" id="defaultPurchOrg" placeholder="1022">
+                </div>
+                <div class="form-group">
+                    <label>Purch. Group</label>
+                    <input type="text" id="defaultPurchGroup" placeholder="221">
+                </div>
+                <div class="form-group">
+                    <label>Material Group</label>
+                    <input type="text" id="defaultMatGroup" placeholder="9215">
+                </div>
+                <div class="form-group">
+                    <label>Base Unit</label>
+                    <input type="text" id="defaultBaseUnit" placeholder="PC">
+                </div>
+                <div class="form-group">
+                    <label>Req. Tracking</label>
+                    <input type="text" id="defaultReqTracking" placeholder="YUTTAPON">
+                </div>
+                <div class="form-group">
+                    <label>Requisitioner</label>
+                    <input type="text" id="defaultRequisitioner" placeholder="1A01">
+                </div>
+                <div class="form-group">
+                    <label>GL Account</label>
+                    <input type="text" id="defaultGLAccount" placeholder="56030070">
+                </div>
+                <div class="form-group">
+                    <label>Cost Center</label>
+                    <input type="text" id="defaultCostCenter" placeholder="102069ITC0">
+                </div>
+                <div class="form-group">
+                    <label>Order ID</label>
+                    <input type="text" id="defaultOrderID" placeholder="E1020IT001">
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="items-section">
+                <div class="items-header">📦 รายการ Items (<span id="itemCount">0</span>)</div>
+                <div class="items-container" id="itemsContainer"></div>
+            </div>
+
+            <!-- Actions -->
+            <div class="action-buttons">
+                <button class="btn btn-warning" onclick="applyDefaultsToAll()">ใช้ค่าเริ่มต้น</button>
+                <button class="btn btn-primary" onclick="previewJSON()">Preview</button>
+                <button class="btn btn-success" onclick="generateAndDownload()">Download JSON</button>
+                <button class="btn btn-secondary" onclick="exportAllToCSV()">CSV</button>
+            </div>
+
+            <!-- Send to Interface Section -->
+            <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 2px solid #4caf50; border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <div style="font-weight: 700; color: #2e7d32; font-size: 1.1em;">ส่งไฟล์ไป Interface</div>
+                        <div style="color: #558b2f; font-size: 0.85em;">บันทึกไฟล์ JSON ไปยัง Network Share</div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" style="background: #2196f3; color: white;" onclick="checkNetworkShare()">ทดสอบ</button>
+                        <button class="btn" style="background: #4caf50; color: white; min-width: 180px;" id="sendFileBtn" onclick="sendToInterface()">
+                            <span id="sendFileBtnText">Send to Interface</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="search-status" id="sendFileStatus" style="margin-top: 10px;"></div>
+            </div>
+        </div>
+
+        <!-- JSON Preview -->
+        <div class="json-preview" id="jsonPreview">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #1e3c72;">📄 JSON Preview</h3>
+                <button class="btn btn-primary" onclick="copyJSON()">📋 Copy</button>
+            </div>
+            <pre id="jsonContent"></pre>
+        </div>
+
+        <div class="footer">SAP PR Generator v4.0 | Thai Union Group | Direct API Connection</div>
+    </div>
+
+    <script>
+        // ==================== Global Variables ====================
+        const MAX_FILE_SIZE = 20 * 1024 * 1024;
+        const DELAY_BETWEEN_FILES = 5000;
+
+        let selectedFiles = [];
+        let processedResults = [];
+        let currentIndex = 0;
+
+        // ==================== DOM Elements ====================
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filesList = document.getElementById('filesList');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const sapConfigSection = document.getElementById('sapConfigSection');
+
+        // ==================== Date Functions ====================
+        function formatDateForDisplay(dateValue) {
+            if (!dateValue) return '-';
+            const match = dateValue.match(/\/Date\((\d+)\)\//);
+            if (match) {
+                const date = new Date(parseInt(match[1]));
+                return `${String(date.getDate()).padStart(2,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${date.getFullYear()}`;
+            }
+            if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const p = dateValue.split('-');
+                return `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            return dateValue;
+        }
+
+        function formatDateForSAP(dateValue) {
+            if (!dateValue) return '';
+            if (dateValue.match(/\/Date\(\d+\)\//)) return dateValue;
+            const date = new Date(dateValue);
+            return `/Date(${date.getTime()})/`;
+        }
+
+        function formatDateForInput(dateValue) {
+            if (!dateValue) return '';
+            const match = dateValue.match(/\/Date\((\d+)\)\//);
+            if (match) {
+                return new Date(parseInt(match[1])).toISOString().split('T')[0];
+            }
+            if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) return dateValue;
+            return '';
+        }
+
+        function extractSerialNumber(itemText) {
+            if (!itemText) return null;
+            const match = itemText.match(/S\/N:\s*([A-Za-z0-9]+)/i);
+            return match ? match[1] : null;
+        }
+
+        // ==================== Event Listeners ====================
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#2a5298'; });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#1e3c72'; });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#1e3c72';
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+            if (files.length > 0) {
+                const dt = new DataTransfer();
+                files.forEach(f => dt.items.add(f));
+                fileInput.files = dt.files;
+                handleFileSelect();
+            }
+        });
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            selectedFiles = Array.from(fileInput.files).filter(f => {
+                if (f.size > MAX_FILE_SIZE) {
+                    alert(`${f.name} เกิน 20 MB`);
+                    return false;
+                }
+                return true;
+            });
+            if (selectedFiles.length > 0) {
+                let html = `<strong>${selectedFiles.length} ไฟล์</strong>`;
+                selectedFiles.forEach((f, i) => {
+                    html += `<div class="file-item" id="file-${i}">
+                        <span>📄 ${f.name} (${(f.size/1024/1024).toFixed(2)} MB)</span>
+                        <span class="file-item-status status-pending" id="status-${i}">รอ</span>
+                    </div>`;
+                });
+                filesList.innerHTML = html;
+                filesList.style.display = 'block';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // ==================== OCR Submit ====================
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (selectedFiles.length === 0) return;
+
+            submitBtn.disabled = true;
+            processedResults = [];
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            const btnText = document.getElementById('btnText');
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const statusEl = document.getElementById(`status-${i}`);
+                statusEl.className = 'file-item-status status-processing';
+                statusEl.innerHTML = '⏳';
+                btnText.innerHTML = `<span class="loading"></span> ${i+1}/${selectedFiles.length}`;
+
+                let result = null;
+                try {
+                    const formData = new FormData();
+                    formData.append('pdf', file);
+                    const response = await fetch(webhookUrl, { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (data.success && data.invoice) {
+                        result = { filename: file.name, invoice: data.invoice, success: true };
+                    } else {
+                        throw new Error(data.message || 'OCR Error');
+                    }
+                } catch (error) {
+                    result = { filename: file.name, error: error.message, success: false };
+                }
+
+                processedResults.push(result);
+                statusEl.className = result.success ? 'file-item-status status-success' : 'file-item-status status-error';
+                statusEl.textContent = result.success ? '✓' : '✗';
+
+                if (i < selectedFiles.length - 1) {
+                    await new Promise(r => setTimeout(r, DELAY_BETWEEN_FILES));
+                }
+            }
+
+            currentIndex = 0;
+            displaySAPConfig();
+            sapConfigSection.style.display = 'block';
+            sapConfigSection.scrollIntoView({ behavior: 'smooth' });
+            submitBtn.disabled = false;
+            btnText.textContent = '🔍 เริ่มสแกน OCR';
+        });
+
+        // ==================== Display SAP Config ====================
+        function displaySAPConfig() {
+            if (processedResults.length === 0) return;
+            const result = processedResults[currentIndex];
+            document.getElementById('fileCounter').textContent = `${currentIndex + 1} / ${processedResults.length}`;
+            document.getElementById('prevBtn').disabled = currentIndex === 0;
+            document.getElementById('nextBtn').disabled = currentIndex === processedResults.length - 1;
+
+            if (!result.success) {
+                document.getElementById('ocrInfoGrid').innerHTML = `<div style="color:#dc3545">❌ ${result.error}</div>`;
+                document.getElementById('itemsContainer').innerHTML = '';
+                return;
+            }
+
+            const invoice = result.invoice;
+            const items = invoice.to_PurchaseReqnItem || [];
+
+            document.getElementById('ocrInfoGrid').innerHTML = `
+                <div class="ocr-info-item"><span class="ocr-info-label">📁</span><span class="ocr-info-value">${result.filename}</span></div>
+                <div class="ocr-info-item"><span class="ocr-info-label">Type:</span><span class="ocr-info-value">${invoice.PurchaseRequisitionType || 'NB'}</span></div>
+                <div class="ocr-info-item"><span class="ocr-info-label">Desc:</span><span class="ocr-info-value">${invoice.PurReqnDescription || '-'}</span></div>
+                <div class="ocr-info-item"><span class="ocr-info-label">Items:</span><span class="ocr-info-value">${items.length}</span></div>
+            `;
+
+            document.getElementById('prType').value = invoice.PurchaseRequisitionType || 'NB';
+            document.getElementById('prDescription').value = invoice.PurReqnDescription || '';
+            document.getElementById('itemCount').textContent = items.length;
+
+            let html = '';
+            items.forEach((item, idx) => {
+                const acct = item.to_PurchaseReqnAcctAssgmt?.[0] || {};
+                const serial = extractSerialNumber(item.PurchaseRequisitionItemText);
+                const dateInput = formatDateForInput(item.DeliveryDate);
+                const dateDisplay = formatDateForDisplay(item.DeliveryDate);
+
+                html += `
+                <div class="item-card" data-index="${idx}" data-serial="${serial || ''}">
+                    <div class="item-card-header">
+                        <span class="item-number">#${idx + 1}</span>
+                        <span class="item-description">${item.PurchaseRequisitionItemText || '-'}</span>
+                        ${serial ? `<span class="item-serial">S/N: ${serial}</span>` : ''}
+                    </div>
+                    <div class="item-form-grid">
+                        <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value="${item.Plant || ''}"></div>
+                        <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value="${item.PurchaseRequisitionItemText || ''}"></div>
+                        <div class="item-form-group"><label>Acct Cat</label>
+                            <select class="item-acct-cat">
+                                <option value="Y" ${item.AccountAssignmentCategory==='Y'?'selected':''}>Y</option>
+                                <option value="K" ${item.AccountAssignmentCategory==='K'?'selected':''}>K</option>
+                                <option value="F" ${item.AccountAssignmentCategory==='F'?'selected':''}>F</option>
+                            </select>
+                        </div>
+                        <div class="item-form-group"><label>Quantity</label><input type="text" class="item-qty" value="${item.RequestedQuantity || ''}"></div>
+                        <div class="item-form-group"><label>Base Unit</label><input type="text" class="item-base-unit" value="${item.BaseUnit || ''}"></div>
+                        <div class="item-form-group"><label>Purch Org</label><input type="text" class="item-purch-org" value="${item.PurchasingOrganization || ''}"></div>
+                        <div class="item-form-group"><label>Purch Group</label><input type="text" class="item-purch-group" value="${item.PurchasingGroup || ''}"></div>
+                        <div class="item-form-group"><label>Mat Group</label><input type="text" class="item-mat-group" value="${item.MaterialGroup || ''}"></div>
+                        <div class="item-form-group"><label>Price</label><input type="text" class="item-price" value="${item.PurchaseRequisitionPrice || ''}"></div>
+                        <div class="item-form-group"><label>Currency</label><input type="text" class="item-currency" value="${item.PurReqnItemCurrency || 'THB'}" readonly style="background:#f5f5f5"></div>
+                        <div class="item-form-group"><label>Inv</label><input type="text" class="item-inv" value="" placeholder="จาก OCR"></div>
+                        <div class="item-form-group"><label>Req Track</label><input type="text" class="item-req-tracking" value="${item.RequirementTracking || ''}"></div>
+                        <div class="item-form-group"><label>Requisitioner</label><input type="text" class="item-requisitioner" value="${item.RequisitionerName || ''}"></div>
+                        <div class="item-form-group"><label>Delivery Date</label><input type="date" class="item-delivery-date" value="${dateInput}"><div class="date-display">📅 ${dateDisplay}</div></div>
+                    </div>
+                    <div class="acct-assignment-section">
+                        <div class="acct-assignment-title">💰 Account Assignment</div>
+                        <div class="item-form-grid">
+                            <div class="item-form-group"><label>GL Account</label><input type="text" class="item-gl-account" value="${acct.GLAccount || ''}"></div>
+                            <div class="item-form-group"><label>Cost Center</label><input type="text" class="item-cost-center" value="${acct.CostCenter || ''}"></div>
+                            <div class="item-form-group"><label>Order ID</label><input type="text" class="item-order-id" value="${acct.OrderID || ''}"></div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('itemsContainer').innerHTML = html || '<div style="padding:20px;text-align:center;color:#999">ไม่มี Items</div>';
+
+            // Date change listener
+            document.querySelectorAll('.item-delivery-date').forEach(input => {
+                input.addEventListener('change', function() {
+                    const display = this.nextElementSibling;
+                    if (display) display.textContent = '📅 ' + formatDateForDisplay(formatDateForSAP(this.value));
+                });
+            });
+
+            document.getElementById('searchStatus').className = 'search-status';
+        }
+
+        // ==================== API Functions ====================
+        async function testAPIConnection() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const status = document.getElementById('searchStatus');
+            status.className = 'search-status loading';
+            status.textContent = '🔄 กำลังทดสอบการเชื่อมต่อ...';
+
+            try {
+                const response = await fetch(`${apiUrl}/health`);
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    status.className = 'search-status success';
+                    status.textContent = '✅ API พร้อมใช้งาน!';
+                } else {
+                    throw new Error('API not healthy');
+                }
+            } catch (error) {
+                status.className = 'search-status error';
+                status.textContent = `❌ ไม่สามารถเชื่อมต่อ API: ${error.message}`;
+            }
+        }
+
+        async function searchFromDatabase() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const searchBtn = document.getElementById('searchDbBtn');
+            const searchBtnText = document.getElementById('searchBtnText');
+            const status = document.getElementById('searchStatus');
+
+            const itemCards = document.querySelectorAll('.item-card');
+            const serials = [];
+            itemCards.forEach((card, idx) => {
+                const serial = card.dataset.serial;
+                if (serial) serials.push({ index: idx, serial });
+            });
+
+            if (serials.length === 0) {
+                status.className = 'search-status error';
+                status.textContent = '❌ ไม่พบ Serial Number';
+                return;
+            }
+
+            searchBtn.disabled = true;
+            searchBtnText.innerHTML = '<span class="loading loading-dark"></span> ค้นหา...';
+            status.className = 'search-status loading';
+            status.textContent = `🔍 ค้นหา ${serials.length} รายการ...`;
+
+            let success = 0, failed = 0;
+
+            // ใช้ batch search ถ้ามีหลาย serial
+            try {
+                const response = await fetch(`${apiUrl}/search-serials`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serials: serials.map(s => s.serial) })
+                });
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    serials.forEach(({ index, serial }) => {
+                        if (result.data[serial]) {
+                            fillItemFromDB(itemCards[index], result.data[serial]);
+                            success++;
+                        } else {
+                            failed++;
+                        }
+                    });
+                }
+            } catch (error) {
+                // Fallback: search one by one
+                for (const { index, serial } of serials) {
+                    try {
+                        const response = await fetch(`${apiUrl}/search-serial`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ serial })
+                        });
+                        const data = await response.json();
+                        if (data.success && data.data) {
+                            fillItemFromDB(itemCards[index], data.data);
+                            success++;
+                        } else {
+                            failed++;
+                        }
+                    } catch (e) {
+                        failed++;
+                    }
+                }
+            }
+
+            searchBtn.disabled = false;
+            searchBtnText.textContent = '🔎 ค้นหาและเติมข้อมูล';
+            status.className = success > 0 ? 'search-status success' : 'search-status error';
+            status.textContent = success > 0 
+                ? `✅ เติมข้อมูล ${success} รายการ${failed > 0 ? `, ไม่พบ ${failed}` : ''}`
+                : `❌ ไม่พบข้อมูล`;
+        }
+
+        function fillItemFromDB(card, data) {
+            // ย้ายค่า Req Track (จาก N8N) ไปที่ Inv ก่อน
+            const reqTrackInput = card.querySelector('.item-req-tracking');
+            const invInput = card.querySelector('.item-inv');
+            if (reqTrackInput && invInput && reqTrackInput.value && !invInput.value) {
+                invInput.value = reqTrackInput.value;
+                invInput.classList.add('filled-from-db');
+            }
+
+            // Mapping ข้อมูลจาก DB
+            const mapping = {
+                'Plant': '.item-plant',
+                'BaseUnit': '.item-base-unit',
+                'PurchasingOrganization': '.item-purch-org',
+                'PurchasingGroup': '.item-purch-group',
+                'MaterialGroup': '.item-mat-group',
+                'RequirementTracking': '.item-req-tracking',
+                'GLAccount': '.item-gl-account',
+                'CostCenter': '.item-cost-center',
+                'OrderID': '.item-order-id',
+                'Requisitioner': '.item-requisitioner'
+            };
+
+            for (const [key, selector] of Object.entries(mapping)) {
+                if (data[key]) {
+                    const input = card.querySelector(selector);
+                    if (input) {
+                        // สำหรับ RequirementTracking ให้แทนที่เสมอ (ไม่ว่าจะมีค่าอยู่หรือไม่)
+                        if (key === 'RequirementTracking') {
+                            input.value = data[key];
+                            input.classList.add('filled-from-db');
+                        } else if (!input.value) {
+                            // สำหรับ field อื่นๆ ให้เติมเฉพาะช่องที่ว่าง
+                            input.value = data[key];
+                            input.classList.add('filled-from-db');
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==================== Default Values ====================
+        function applyDefaultsToAll() {
+            const defaults = {
+                '.item-plant': document.getElementById('defaultPlant').value,
+                '.item-purch-org': document.getElementById('defaultPurchOrg').value,
+                '.item-purch-group': document.getElementById('defaultPurchGroup').value,
+                '.item-mat-group': document.getElementById('defaultMatGroup').value,
+                '.item-base-unit': document.getElementById('defaultBaseUnit').value,
+                '.item-req-tracking': document.getElementById('defaultReqTracking').value,
+                '.item-requisitioner': document.getElementById('defaultRequisitioner').value,
+                '.item-gl-account': document.getElementById('defaultGLAccount').value,
+                '.item-cost-center': document.getElementById('defaultCostCenter').value,
+                '.item-order-id': document.getElementById('defaultOrderID').value
+            };
+            for (const [sel, val] of Object.entries(defaults)) {
+                if (val) document.querySelectorAll(sel).forEach(el => { if (!el.value) el.value = val; });
+            }
+            alert('✅ ใช้ค่าเริ่มต้นเรียบร้อย');
+        }
+
+        // ==================== Collect & Export ====================
+        function collectFormData() {
+            const result = processedResults[currentIndex];
+            if (!result?.success) return null;
+
+            const items = [];
+            document.querySelectorAll('.item-card').forEach(card => {
+                items.push({
+                    Plant: card.querySelector('.item-plant').value,
+                    PurchaseRequisitionItemText: card.querySelector('.item-text').value,
+                    AccountAssignmentCategory: card.querySelector('.item-acct-cat').value,
+                    RequestedQuantity: card.querySelector('.item-qty').value,
+                    BaseUnit: card.querySelector('.item-base-unit').value,
+                    PurchasingOrganization: card.querySelector('.item-purch-org').value,
+                    PurchasingGroup: card.querySelector('.item-purch-group').value,
+                    MaterialGroup: card.querySelector('.item-mat-group').value,
+                    PurchaseRequisitionPrice: card.querySelector('.item-price').value,
+                    PurReqnItemCurrency: card.querySelector('.item-currency').value,
+                    RequirementTracking: card.querySelector('.item-req-tracking').value,
+                    RequisitionerName: card.querySelector('.item-requisitioner').value,
+                    DeliveryDate: formatDateForSAP(card.querySelector('.item-delivery-date').value),
+                    to_PurchaseReqnAcctAssgmt: [{
+                        GLAccount: card.querySelector('.item-gl-account').value,
+                        CostCenter: card.querySelector('.item-cost-center').value,
+                        OrderID: card.querySelector('.item-order-id').value
+                    }]
+                });
+            });
+
+            return {
+                PurchaseRequisitionType: document.getElementById('prType').value,
+                PurReqnDescription: document.getElementById('prDescription').value,
+                to_PurchaseReqnItem: items
+            };
+        }
+
+        function previewJSON() {
+            const data = collectFormData();
+            if (!data) return alert('❌ ไม่มีข้อมูล');
+            document.getElementById('jsonContent').textContent = JSON.stringify(data, null, 2);
+            document.getElementById('jsonPreview').style.display = 'block';
+            document.getElementById('jsonPreview').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copyJSON() {
+            const data = collectFormData();
+            if (data) navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => alert('✅ Copied!'));
+        }
+
+        function generateAndDownload() {
+            const data = collectFormData();
+            if (!data) return alert('❌ ไม่มีข้อมูล');
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `SAP_PR_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+            link.click();
+        }
+
+        function exportAllToCSV() {
+            let csv = '\ufeffPR Type,Description,Plant,Item Text,Qty,BaseUnit,Price,Purch Org,Purch Group,Mat Group,Req Track,Requisitioner,Delivery Date,GL,Cost Center,Order ID\n';
+            processedResults.filter(r => r.success).forEach(r => {
+                (r.invoice.to_PurchaseReqnItem || []).forEach(item => {
+                    const a = item.to_PurchaseReqnAcctAssgmt?.[0] || {};
+                    csv += `"${r.invoice.PurchaseRequisitionType||''}","${r.invoice.PurReqnDescription||''}","${item.Plant||''}","${item.PurchaseRequisitionItemText||''}","${item.RequestedQuantity||''}","${item.BaseUnit||''}","${item.PurchaseRequisitionPrice||''}","${item.PurchasingOrganization||''}","${item.PurchasingGroup||''}","${item.MaterialGroup||''}","${item.RequirementTracking||''}","${item.RequisitionerName||''}","${formatDateForDisplay(item.DeliveryDate)}","${a.GLAccount||''}","${a.CostCenter||''}","${a.OrderID||''}"\n`;
+                });
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `SAP_PR_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        }
+
+        function navigatePrev() { if (currentIndex > 0) { currentIndex--; displaySAPConfig(); } }
+        function navigateNext() { if (currentIndex < processedResults.length - 1) { currentIndex++; displaySAPConfig(); } }
+
+        // ==================== Send to Interface Functions ====================
+        
+        async function checkNetworkShare() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const status = document.getElementById('sendFileStatus');
+            
+            status.className = 'search-status loading';
+            status.textContent = '🔄 กำลังทดสอบการเชื่อมต่อ Network Share...';
+
+            try {
+                const response = await fetch(`${apiUrl}/check-share`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    status.className = 'search-status success';
+                    status.textContent = `✅ เชื่อมต่อสำเร็จ! (พบ ${data.fileCount} ไฟล์ในโฟลเดอร์)`;
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                status.className = 'search-status error';
+                status.textContent = `❌ ไม่สามารถเชื่อมต่อได้: ${error.message}`;
+            }
+        }
+
+        async function sendToInterface() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const sendBtn = document.getElementById('sendFileBtn');
+            const sendBtnText = document.getElementById('sendFileBtnText');
+            const status = document.getElementById('sendFileStatus');
+            
+            const data = collectFormData();
+            if (!data) {
+                status.className = 'search-status error';
+                status.textContent = '❌ ไม่มีข้อมูลให้ส่ง - กรุณาสแกน OCR ก่อน';
+                return;
+            }
+
+            // สร้างชื่อไฟล์
+            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g,'-').replace('T','_');
+            const prDesc = (data.PurReqnDescription || 'PR').substring(0, 30).replace(/[^a-zA-Z0-9ก-๙]/g, '_');
+            const filename = `SAP_PR_${prDesc}_${timestamp}.json`;
+
+            sendBtn.disabled = true;
+            sendBtnText.innerHTML = '<span class="loading"></span> กำลังส่ง...';
+            status.className = 'search-status loading';
+            status.textContent = '📤 กำลังส่งไฟล์ไป Interface...';
+
+            try {
+                const response = await fetch(`${apiUrl}/save-file`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: filename,
+                        content: data
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.className = 'search-status success';
+                    status.textContent = `✅ ${result.message}`;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                status.className = 'search-status error';
+                status.textContent = `❌ ส่งไฟล์ไม่สำเร็จ: ${error.message}`;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtnText.textContent = 'Send to Interface';
+            }
+        }
+    </script>
+</body>
+</html>
