@@ -11,7 +11,7 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #050a18;
+            background: linear-gradient(145deg, #f8faff 0%, #eef2f9 40%, #f5f0ff 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -26,8 +26,8 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             background-image:
-                linear-gradient(rgba(0, 195, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 195, 255, 0.03) 1px, transparent 1px);
+                linear-gradient(rgba(0, 80, 200, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 80, 200, 0.04) 1px, transparent 1px);
             background-size: 60px 60px;
             z-index: 0;
         }
@@ -35,29 +35,29 @@
         .bg-glow {
             position: fixed;
             border-radius: 50%;
-            filter: blur(120px);
-            opacity: 0.4;
+            filter: blur(140px);
+            opacity: 0.3;
             z-index: 0;
             animation: floatGlow 8s ease-in-out infinite;
         }
 
         .bg-glow-1 {
             width: 500px; height: 500px;
-            background: radial-gradient(circle, #0066ff 0%, transparent 70%);
+            background: radial-gradient(circle, #a5c8ff 0%, transparent 70%);
             top: -10%; left: -10%;
             animation-delay: 0s;
         }
 
         .bg-glow-2 {
             width: 400px; height: 400px;
-            background: radial-gradient(circle, #00d4ff 0%, transparent 70%);
+            background: radial-gradient(circle, #7dd3fc 0%, transparent 70%);
             bottom: -10%; right: -10%;
             animation-delay: -4s;
         }
 
         .bg-glow-3 {
             width: 300px; height: 300px;
-            background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
+            background: radial-gradient(circle, #c4b5fd 0%, transparent 70%);
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             animation-delay: -2s;
@@ -82,7 +82,7 @@
         .particle {
             position: absolute;
             width: 3px; height: 3px;
-            background: #00c3ff;
+            background: #3b82f6;
             border-radius: 50%;
             opacity: 0;
             animation: particleFloat linear infinite;
@@ -90,8 +90,8 @@
 
         @keyframes particleFloat {
             0% { opacity: 0; transform: translateY(100vh) scale(0); }
-            10% { opacity: 0.8; }
-            90% { opacity: 0.8; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
             100% { opacity: 0; transform: translateY(-20vh) scale(1); }
         }
 
@@ -107,7 +107,7 @@
         .neural-line {
             position: absolute;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(0, 195, 255, 0.15), transparent);
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.12), transparent);
             animation: neuralPulse 4s ease-in-out infinite;
         }
 
@@ -126,18 +126,18 @@
         }
 
         .login-card {
-            background: rgba(10, 20, 45, 0.85);
+            background: rgba(255, 255, 255, 0.82);
             backdrop-filter: blur(30px);
             -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(0, 195, 255, 0.15);
+            border: 1px solid rgba(0, 80, 200, 0.08);
             border-radius: 24px;
             padding: 50px 40px;
             position: relative;
             overflow: hidden;
             box-shadow:
-                0 0 60px rgba(0, 100, 255, 0.1),
-                0 25px 50px rgba(0, 0, 0, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                0 0 60px rgba(0, 80, 200, 0.06),
+                0 25px 50px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
         .login-card::before {
@@ -146,9 +146,9 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             background: linear-gradient(135deg,
-                rgba(0, 195, 255, 0.05) 0%,
+                rgba(59, 130, 246, 0.03) 0%,
                 transparent 50%,
-                rgba(124, 58, 237, 0.05) 100%);
+                rgba(139, 92, 246, 0.03) 100%);
             pointer-events: none;
         }
 
@@ -159,10 +159,10 @@
             top: -100%;
             left: 0;
             width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00c3ff, transparent);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
             animation: scanLine 4s ease-in-out infinite;
-            opacity: 0.6;
+            opacity: 0.8;
         }
 
         @keyframes scanLine {
@@ -190,7 +190,7 @@
         .ai-icon-ring {
             position: absolute;
             width: 100%; height: 100%;
-            border: 2px solid rgba(0, 195, 255, 0.3);
+            border: 2px solid rgba(59, 130, 246, 0.25);
             border-radius: 50%;
             animation: ringPulse 3s ease-in-out infinite;
         }
@@ -198,7 +198,7 @@
         .ai-icon-ring:nth-child(2) {
             width: 90%; height: 90%;
             top: 5%; left: 5%;
-            border-color: rgba(0, 195, 255, 0.2);
+            border-color: rgba(59, 130, 246, 0.15);
             animation-delay: -1s;
             animation-direction: reverse;
         }
@@ -206,26 +206,26 @@
         .ai-icon-ring:nth-child(3) {
             width: 110%; height: 110%;
             top: -5%; left: -5%;
-            border-color: rgba(124, 58, 237, 0.15);
+            border-color: rgba(139, 92, 246, 0.12);
             animation-delay: -0.5s;
         }
 
         @keyframes ringPulse {
-            0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.5; }
+            0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.4; }
             50% { transform: rotate(180deg) scale(1.05); opacity: 1; }
         }
 
         .ai-icon-core {
             font-size: 32px;
             z-index: 1;
-            filter: drop-shadow(0 0 15px rgba(0, 195, 255, 0.5));
+            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.3));
         }
 
         .app-title {
             font-family: 'Orbitron', monospace;
             font-size: 1.5em;
             font-weight: 700;
-            background: linear-gradient(135deg, #00c3ff 0%, #0066ff 50%, #7c3aed 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #7c3aed 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -234,7 +234,7 @@
         }
 
         .app-subtitle {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(30, 41, 59, 0.45);
             font-size: 0.85em;
             font-weight: 300;
             letter-spacing: 3px;
@@ -242,7 +242,7 @@
         }
 
         .app-org {
-            color: rgba(0, 195, 255, 0.5);
+            color: rgba(37, 99, 235, 0.55);
             font-size: 0.75em;
             font-weight: 500;
             margin-top: 6px;
@@ -260,7 +260,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(30, 41, 59, 0.5);
             font-size: 0.82em;
             font-weight: 400;
         }
@@ -268,13 +268,13 @@
         .status-dot {
             width: 8px; height: 8px;
             border-radius: 50%;
-            background: #00c3ff;
+            background: #3b82f6;
             animation: dotPulse 2s ease-in-out infinite;
-            box-shadow: 0 0 10px rgba(0, 195, 255, 0.5);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
         }
 
-        .status-dot.ready { background: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
-        .status-dot.error { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); animation: none; }
+        .status-dot.ready { background: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
+        .status-dot.error { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); animation: none; }
 
         @keyframes dotPulse {
             0%, 100% { opacity: 0.5; transform: scale(0.8); }
@@ -285,8 +285,8 @@
         .signin-btn {
             width: 100%;
             padding: 16px 24px;
-            background: linear-gradient(135deg, #0066ff 0%, #0044cc 100%);
-            border: 1px solid rgba(0, 195, 255, 0.2);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            border: 1px solid rgba(37, 99, 235, 0.15);
             border-radius: 14px;
             color: white;
             font-family: 'Inter', sans-serif;
@@ -307,7 +307,7 @@
             position: absolute;
             top: 0; left: -100%;
             width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
             transition: left 0.5s ease;
         }
 
@@ -315,8 +315,8 @@
 
         .signin-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(0, 102, 255, 0.3), 0 0 20px rgba(0, 195, 255, 0.1);
-            border-color: rgba(0, 195, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25), 0 0 20px rgba(59, 130, 246, 0.1);
+            border-color: rgba(37, 99, 235, 0.3);
         }
 
         .signin-btn:active { transform: translateY(0); }
@@ -370,23 +370,23 @@
         }
 
         .message-box.error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #dc2626;
             display: block;
         }
 
         .message-box.info {
-            background: rgba(0, 195, 255, 0.1);
-            border: 1px solid rgba(0, 195, 255, 0.2);
-            color: #7dd3fc;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            color: #2563eb;
             display: block;
         }
 
         .message-box.success {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            color: #86efac;
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #16a34a;
             display: block;
         }
 
@@ -397,14 +397,14 @@
             margin-top: 20px;
             padding: 20px;
             background: rgba(34, 197, 94, 0.05);
-            border: 1px solid rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.15);
             border-radius: 14px;
         }
 
         .user-avatar {
             width: 50px; height: 50px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #00c3ff, #7c3aed);
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -412,24 +412,24 @@
             font-size: 1.4em;
             color: white;
             font-weight: 700;
-            border: 2px solid rgba(0, 195, 255, 0.3);
+            border: 2px solid rgba(59, 130, 246, 0.2);
         }
 
         .user-name {
-            color: white;
+            color: #1e293b;
             font-weight: 600;
             font-size: 1em;
             margin-bottom: 4px;
         }
 
         .user-email {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(30, 41, 59, 0.45);
             font-size: 0.85em;
             margin-bottom: 12px;
         }
 
         .redirect-text {
-            color: rgba(34, 197, 94, 0.8);
+            color: #16a34a;
             font-size: 0.8em;
         }
 
@@ -438,17 +438,17 @@
             text-align: center;
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .footer-text {
-            color: rgba(255, 255, 255, 0.2);
+            color: rgba(30, 41, 59, 0.3);
             font-size: 0.75em;
             letter-spacing: 0.5px;
         }
 
         .footer-secure {
-            color: rgba(0, 195, 255, 0.4);
+            color: rgba(37, 99, 235, 0.45);
             font-size: 0.7em;
             margin-top: 6px;
             display: flex;
@@ -461,31 +461,31 @@
         .config-warning {
             margin-top: 20px;
             padding: 14px;
-            background: rgba(255, 185, 0, 0.08);
-            border: 1px solid rgba(255, 185, 0, 0.25);
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.2);
             border-radius: 12px;
             display: none;
         }
 
         .config-warning-title {
-            color: #fbbf24;
+            color: #b45309;
             font-weight: 600;
             font-size: 0.85em;
             margin-bottom: 6px;
         }
 
         .config-warning-text {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(30, 41, 59, 0.5);
             font-size: 0.78em;
             line-height: 1.6;
         }
 
         .config-warning-text code {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(245, 158, 11, 0.1);
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.92em;
-            color: #fbbf24;
+            color: #b45309;
         }
 
         /* ==================== Responsive ==================== */
