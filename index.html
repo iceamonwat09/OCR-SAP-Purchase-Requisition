@@ -684,6 +684,30 @@
     </div>
 
     <script>
+        // ==================== Auth Guard ====================
+        // ตรวจสอบว่า Login ผ่าน SSO แล้วหรือยัง
+        (function() {
+            var auth = sessionStorage.getItem('msalAccount');
+            if (!auth) {
+                window.location.href = 'login.html';
+                return;
+            }
+            try {
+                var account = JSON.parse(auth);
+                var loginTime = new Date(account.loginTime);
+                var hoursDiff = (new Date() - loginTime) / (1000 * 60 * 60);
+                if (hoursDiff >= 8) {
+                    sessionStorage.removeItem('msalAccount');
+                    window.location.href = 'login.html';
+                    return;
+                }
+            } catch (e) {
+                sessionStorage.removeItem('msalAccount');
+                window.location.href = 'login.html';
+                return;
+            }
+        })();
+
         // ==================== Global Variables ====================
         const MAX_FILE_SIZE = 20 * 1024 * 1024;
         const DELAY_BETWEEN_FILES = 5000;
