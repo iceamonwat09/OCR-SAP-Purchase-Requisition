@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP PR Generator - Sign In</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(145deg, #f8faff 0%, #eef2f9 40%, #f5f0ff 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ==================== Animated Background ==================== */
+        .bg-grid {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 80, 200, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 80, 200, 0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+
+        .bg-glow {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.3;
+            z-index: 0;
+            animation: floatGlow 8s ease-in-out infinite;
+        }
+
+        .bg-glow-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #a5c8ff 0%, transparent 70%);
+            top: -10%; left: -10%;
+            animation-delay: 0s;
+        }
+
+        .bg-glow-2 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, #7dd3fc 0%, transparent 70%);
+            bottom: -10%; right: -10%;
+            animation-delay: -4s;
+        }
+
+        .bg-glow-3 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, #c4b5fd 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -2s;
+        }
+
+        @keyframes floatGlow {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -20px) scale(1.1); }
+            50% { transform: translate(-20px, 30px) scale(0.9); }
+            75% { transform: translate(20px, 20px) scale(1.05); }
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 3px; height: 3px;
+            background: #3b82f6;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleFloat linear infinite;
+        }
+
+        @keyframes particleFloat {
+            0% { opacity: 0; transform: translateY(100vh) scale(0); }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { opacity: 0; transform: translateY(-20vh) scale(1); }
+        }
+
+        /* Neural Network Lines */
+        .neural-lines {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .neural-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.12), transparent);
+            animation: neuralPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes neuralPulse {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* ==================== Login Card ==================== */
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 460px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(0, 80, 200, 0.08);
+            border-radius: 24px;
+            padding: 50px 40px;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 0 60px rgba(0, 80, 200, 0.06),
+                0 25px 50px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg,
+                rgba(59, 130, 246, 0.03) 0%,
+                transparent 50%,
+                rgba(139, 92, 246, 0.03) 100%);
+            pointer-events: none;
+        }
+
+        /* Scanning Line Effect */
+        .login-card::after {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+            animation: scanLine 4s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes scanLine {
+            0% { top: -5%; }
+            100% { top: 105%; }
+        }
+
+        /* ==================== Logo & Branding ==================== */
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .ai-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-icon-ring {
+            position: absolute;
+            width: 100%; height: 100%;
+            border: 2px solid rgba(59, 130, 246, 0.25);
+            border-radius: 50%;
+            animation: ringPulse 3s ease-in-out infinite;
+        }
+
+        .ai-icon-ring:nth-child(2) {
+            width: 90%; height: 90%;
+            top: 5%; left: 5%;
+            border-color: rgba(59, 130, 246, 0.15);
+            animation-delay: -1s;
+            animation-direction: reverse;
+        }
+
+        .ai-icon-ring:nth-child(3) {
+            width: 110%; height: 110%;
+            top: -5%; left: -5%;
+            border-color: rgba(139, 92, 246, 0.12);
+            animation-delay: -0.5s;
+        }
+
+        @keyframes ringPulse {
+            0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.4; }
+            50% { transform: rotate(180deg) scale(1.05); opacity: 1; }
+        }
+
+        .ai-icon-core {
+            font-size: 32px;
+            z-index: 1;
+            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.3));
+        }
+
+        .app-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 50%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .app-subtitle {
+            color: rgba(30, 41, 59, 0.45);
+            font-size: 0.85em;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .app-org {
+            color: rgba(37, 99, 235, 0.55);
+            font-size: 0.75em;
+            font-weight: 500;
+            margin-top: 6px;
+            letter-spacing: 1px;
+        }
+
+        /* ==================== Status Message ==================== */
+        .status-section {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .status-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: rgba(30, 41, 59, 0.5);
+            font-size: 0.82em;
+            font-weight: 400;
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #3b82f6;
+            animation: dotPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .status-dot.ready { background: #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
+        .status-dot.error { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); animation: none; }
+
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* ==================== Sign In Button ==================== */
+        .signin-btn {
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            border: 1px solid rgba(37, 99, 235, 0.15);
+            border-radius: 14px;
+            color: white;
+            font-family: 'Prompt', sans-serif;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .signin-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .signin-btn:hover::before { left: 100%; }
+
+        .signin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25), 0 0 20px rgba(59, 130, 246, 0.1);
+            border-color: rgba(37, 99, 235, 0.3);
+        }
+
+        .signin-btn:active { transform: translateY(0); }
+
+        .signin-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .signin-btn:disabled:hover {
+            box-shadow: none;
+        }
+
+        .ms-icon {
+            width: 20px; height: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+        }
+
+        .ms-icon span {
+            border-radius: 1px;
+        }
+
+        .ms-icon span:nth-child(1) { background: #f25022; }
+        .ms-icon span:nth-child(2) { background: #7fba00; }
+        .ms-icon span:nth-child(3) { background: #00a4ef; }
+        .ms-icon span:nth-child(4) { background: #ffb900; }
+
+        .btn-loading {
+            display: none;
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ==================== Error/Info Messages ==================== */
+        .message-box {
+            margin-top: 20px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            display: none;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .message-box.error {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+            display: block;
+        }
+
+        .message-box.info {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            color: #2563eb;
+            display: block;
+        }
+
+        .message-box.success {
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #16a34a;
+            display: block;
+        }
+
+        /* ==================== User Info (After Login) ==================== */
+        .user-info {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(34, 197, 94, 0.05);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            border-radius: 14px;
+        }
+
+        .user-avatar {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 1.4em;
+            color: white;
+            font-weight: 700;
+            border: 2px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .user-name {
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 1em;
+            margin-bottom: 4px;
+        }
+
+        .user-email {
+            color: rgba(30, 41, 59, 0.45);
+            font-size: 0.85em;
+            margin-bottom: 12px;
+        }
+
+        .redirect-text {
+            color: #16a34a;
+            font-size: 0.8em;
+        }
+
+        /* ==================== Footer ==================== */
+        .login-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .footer-text {
+            color: rgba(30, 41, 59, 0.3);
+            font-size: 0.75em;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-secure {
+            color: rgba(37, 99, 235, 0.45);
+            font-size: 0.7em;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        /* ==================== Config Warning ==================== */
+        .config-warning {
+            margin-top: 20px;
+            padding: 14px;
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            display: none;
+        }
+
+        .config-warning-title {
+            color: #b45309;
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+        }
+
+        .config-warning-text {
+            color: rgba(30, 41, 59, 0.5);
+            font-size: 0.78em;
+            line-height: 1.6;
+        }
+
+        .config-warning-text code {
+            background: rgba(245, 158, 11, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.92em;
+            color: #b45309;
+        }
+
+        /* ==================== Responsive ==================== */
+        @media (max-width: 480px) {
+            .login-card { padding: 40px 25px; }
+            .app-title { font-size: 1.2em; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Animated Background -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <div class="particles" id="particles"></div>
+
+    <div class="neural-lines" id="neuralLines"></div>
+
+    <!-- Login Card -->
+    <div class="login-container">
+        <div class="login-card">
+
+            <!-- Logo -->
+            <div class="logo-section">
+                <div class="ai-icon">
+                    <div class="ai-icon-ring"></div>
+                    <div class="ai-icon-ring"></div>
+                    <div class="ai-icon-ring"></div>
+                    <div class="ai-icon-core">&#x1F3ED;</div>
+                </div>
+                <div class="app-title">SAP PR Generator</div>
+                <div class="app-subtitle">Intelligent Document Processing</div>
+                <div class="app-org">Thai Union Group</div>
+            </div>
+
+            <!-- Status -->
+            <div class="status-section">
+                <div class="status-line">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Initializing secure connection...</span>
+                </div>
+            </div>
+
+            <!-- Sign In Button -->
+            <button class="signin-btn" id="signinBtn" onclick="signIn()" disabled>
+                <div class="ms-icon">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+                <span id="signinBtnText">Sign in with Microsoft 365</span>
+                <div class="btn-loading" id="btnLoading"></div>
+            </button>
+
+            <!-- User Info (shown after login) -->
+            <div class="user-info" id="userInfo">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-name" id="userName">-</div>
+                <div class="user-email" id="userEmail">-</div>
+                <div class="redirect-text" id="redirectText">Redirecting to application...</div>
+            </div>
+
+            <!-- Messages -->
+            <div class="message-box" id="messageBox"></div>
+
+            <!-- Config Warning -->
+            <div class="config-warning" id="configWarning">
+                <div class="config-warning-title">&#9888;&#65039; Configuration Required</div>
+                <div class="config-warning-text">
+                    กรุณาแก้ไขไฟล์ <code>auth-config.js</code> โดยใส่ค่า<br>
+                    <code>TENANT_ID</code> และ <code>CLIENT_ID</code> จาก Azure AD
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="login-footer">
+                <div class="footer-text">SAP PR Generator v4.0 | OCR to Purchase Requisition</div>
+                <div class="footer-secure">
+                    &#x1F512; Secured by Microsoft Azure Active Directory
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Config (แก้ไขค่าที่ auth-config.js) -->
+    <script src="auth-config.js"></script>
+
+    <!-- MSAL.js from CDN -->
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+    <script>
+        // ==================== Background Animations ====================
+        (function initParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (8 + Math.random() * 12) + 's';
+                p.style.animationDelay = Math.random() * 10 + 's';
+                p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+                container.appendChild(p);
+            }
+        })();
+
+        (function initNeuralLines() {
+            const container = document.getElementById('neuralLines');
+            for (let i = 0; i < 8; i++) {
+                const line = document.createElement('div');
+                line.className = 'neural-line';
+                line.style.top = (10 + Math.random() * 80) + '%';
+                line.style.left = Math.random() * 30 + '%';
+                line.style.width = (30 + Math.random() * 40) + '%';
+                line.style.animationDuration = (3 + Math.random() * 4) + 's';
+                line.style.animationDelay = Math.random() * 4 + 's';
+                container.appendChild(line);
+            }
+        })();
+
+        // ==================== MSAL Configuration ====================
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const signinBtn = document.getElementById('signinBtn');
+        const signinBtnText = document.getElementById('signinBtnText');
+        const btnLoading = document.getElementById('btnLoading');
+        const messageBox = document.getElementById('messageBox');
+        const configWarning = document.getElementById('configWarning');
+
+        let msalInstance = null;
+
+        function showMessage(text, type) {
+            messageBox.textContent = text;
+            messageBox.className = 'message-box ' + type;
+        }
+
+        function hideMessage() {
+            messageBox.className = 'message-box';
+        }
+
+        function isConfigured() {
+            return AUTH_CONFIG.TENANT_ID !== 'YOUR_TENANT_ID'
+                && AUTH_CONFIG.CLIENT_ID !== 'YOUR_CLIENT_ID';
+        }
+
+        // ==================== Initialize MSAL ====================
+        function initMSAL() {
+            if (!isConfigured()) {
+                statusDot.className = 'status-dot error';
+                statusText.textContent = 'Configuration required';
+                configWarning.style.display = 'block';
+                signinBtn.disabled = true;
+                return false;
+            }
+
+            try {
+                const msalConfig = {
+                    auth: {
+                        clientId: AUTH_CONFIG.CLIENT_ID,
+                        authority: AUTH_CONFIG.AUTHORITY_BASE + AUTH_CONFIG.TENANT_ID,
+                        redirectUri: AUTH_CONFIG.REDIRECT_URI
+                    },
+                    cache: {
+                        cacheLocation: AUTH_CONFIG.CACHE_LOCATION,
+                        storeAuthStateInCookie: false
+                    }
+                };
+
+                msalInstance = new msal.PublicClientApplication(msalConfig);
+
+                // Handle redirect response
+                msalInstance.handleRedirectPromise().then(handleResponse).catch(function(error) {
+                    console.error('Redirect error:', error);
+                    showMessage('Authentication error: ' + error.message, 'error');
+                });
+
+                // Check if already logged in
+                const accounts = msalInstance.getAllAccounts();
+                if (accounts.length > 0) {
+                    handleLoggedInUser(accounts[0]);
+                    return true;
+                }
+
+                statusDot.className = 'status-dot ready';
+                statusText.textContent = 'Secure connection established';
+                signinBtn.disabled = false;
+                return true;
+
+            } catch (error) {
+                statusDot.className = 'status-dot error';
+                statusText.textContent = 'Initialization failed';
+                showMessage('Failed to initialize: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // ==================== Handle Auth Response ====================
+        function handleResponse(response) {
+            if (response) {
+                handleLoggedInUser(response.account);
+            }
+        }
+
+        function handleLoggedInUser(account) {
+            // Store auth data in sessionStorage
+            sessionStorage.setItem('msalAccount', JSON.stringify({
+                name: account.name,
+                username: account.username,
+                localAccountId: account.localAccountId,
+                tenantId: account.tenantId,
+                loginTime: new Date().toISOString()
+            }));
+
+            // Show user info
+            signinBtn.style.display = 'none';
+            const userInfo = document.getElementById('userInfo');
+            userInfo.style.display = 'block';
+
+            const initials = (account.name || 'U').split(' ').map(function(n) { return n[0]; }).join('').substring(0, 2).toUpperCase();
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('userName').textContent = account.name || '-';
+            document.getElementById('userEmail').textContent = account.username || '-';
+
+            statusDot.className = 'status-dot ready';
+            statusText.textContent = 'Authenticated';
+            hideMessage();
+
+            // Redirect to main app after brief delay
+            setTimeout(function() {
+                window.location.href = 'index.html';
+            }, 1500);
+        }
+
+        // ==================== Sign In ====================
+        function signIn() {
+            if (!msalInstance) return;
+
+            signinBtn.disabled = true;
+            signinBtnText.textContent = 'Connecting...';
+            btnLoading.style.display = 'inline-block';
+            hideMessage();
+
+            const loginRequest = { scopes: AUTH_CONFIG.SCOPES };
+
+            // Use popup for better UX
+            msalInstance.loginPopup(loginRequest).then(function(response) {
+                handleResponse(response);
+            }).catch(function(error) {
+                console.error('Login error:', error);
+                signinBtn.disabled = false;
+                signinBtnText.textContent = 'Sign in with Microsoft 365';
+                btnLoading.style.display = 'none';
+
+                if (error.errorCode === 'user_cancelled') {
+                    showMessage('Sign in was cancelled', 'info');
+                } else if (error.errorCode === 'popup_window_error') {
+                    // Fallback to redirect if popup blocked
+                    showMessage('Popup blocked - redirecting...', 'info');
+                    msalInstance.loginRedirect(loginRequest);
+                } else {
+                    showMessage('Sign in failed: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // ==================== Initialize on Load ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if already authenticated
+            const existingAuth = sessionStorage.getItem('msalAccount');
+            if (existingAuth) {
+                try {
+                    var account = JSON.parse(existingAuth);
+                    // If auth exists less than 8 hours ago, redirect directly
+                    var loginTime = new Date(account.loginTime);
+                    var now = new Date();
+                    var hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+                    if (hoursDiff < 8) {
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    // Expired - clear and show login
+                    sessionStorage.removeItem('msalAccount');
+                } catch (e) {
+                    sessionStorage.removeItem('msalAccount');
+                }
+            }
+
+            // Small delay for visual effect
+            setTimeout(function() {
+                if (typeof msal !== 'undefined') {
+                    initMSAL();
+                } else {
+                    statusDot.className = 'status-dot error';
+                    statusText.textContent = 'Failed to load authentication library';
+                    showMessage('Cannot load MSAL.js - please check internet connection', 'error');
+                }
+            }, 800);
+        });
+    </script>
+</body>
+</html>
