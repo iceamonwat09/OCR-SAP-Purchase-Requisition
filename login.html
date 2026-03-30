@@ -801,8 +801,11 @@
                 isGuest: false
             }));
 
-            // Show user info
+            // Show user info, hide login buttons
             signinBtn.style.display = 'none';
+            document.getElementById('loginDivider').style.display = 'none';
+            document.getElementById('guestBtn').style.display = 'none';
+            document.getElementById('guestNote').style.display = 'none';
             const userInfo = document.getElementById('userInfo');
             userInfo.style.display = 'block';
 
