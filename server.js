@@ -65,14 +65,14 @@ app.get('/api/health', (req, res) => {
 });
 
 /**
- * บันทึกไฟล์ JSON ไปยัง Network Share
+ * บันทึกไฟล์ JSON ไปยัง Network Share + บันทึกประวัติลง DB
  * POST /api/save-file
- * Body: { "filename": "SAP_PR_xxx.json", "content": { ... } }
+ * Body: { "filename": "SAP_PR_xxx.json", "content": { ... }, "scanFilename": "invoice.pdf", "user": "user@email.com" }
  */
 app.post('/api/save-file', async (req, res) => {
     try {
-        const { filename, content } = req.body;
-        
+        const { filename, content, scanFilename, user } = req.body;
+
         if (!filename || !content) {
             return res.status(400).json({
                 success: false,
@@ -82,7 +82,7 @@ app.post('/api/save-file', async (req, res) => {
 
         // สร้าง safe filename (ป้องกัน path traversal)
         const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
-        
+
         // ตรวจสอบว่าเป็นไฟล์ .json
         if (!safeFilename.endsWith('.json')) {
             return res.status(400).json({
@@ -101,6 +101,23 @@ app.post('/api/save-file', async (req, res) => {
 
         console.log(`✅ File saved: ${safeFilename}`);
 
+        // บันทึกประวัติ Send Interface ลง Database
+        try {
+            const pool = await getPool();
+            await pool.request()
+                .input('scanFilename', sql.NVarChar, scanFilename || '')
+                .input('outputFilename', sql.NVarChar, safeFilename)
+                .input('createdBy', sql.NVarChar, user || 'Unknown')
+                .query(`
+                    INSERT INTO InterfaceHistory (ScanFilename, OutputFilename, CreatedDate, CreatedBy)
+                    VALUES (@scanFilename, @outputFilename, GETDATE(), @createdBy)
+                `);
+            console.log(`📝 Interface history logged for: ${safeFilename}`);
+        } catch (logError) {
+            // ไม่ block การส่งไฟล์ ถ้า log ล้มเหลว
+            console.error('⚠️ Failed to log interface history:', logError.message);
+        }
+
         res.json({
             success: true,
             message: `บันทึกไฟล์สำเร็จ: ${safeFilename}`,
@@ -110,7 +127,7 @@ app.post('/api/save-file', async (req, res) => {
 
     } catch (error) {
         console.error('❌ Save file error:', error.message);
-        
+
         let errorMessage = 'ไม่สามารถบันทึกไฟล์ได้';
         if (error.code === 'ENOENT') {
             errorMessage = 'ไม่พบโฟลเดอร์ปลายทาง - ตรวจสอบ Network Share';
@@ -343,6 +360,365 @@ app.get('/api/test-db', async (req, res) => {
     }
 });
 
+// ==================== Master Data Management APIs ====================
+
+/**
+ * ดึงรายการ Master Data
+ * GET /api/master/list?user=xxx
+ * ถ้า user=System จะดึงทั้งหมด, ถ้าไม่ใช่จะดึงเฉพาะของ user นั้น
+ */
+app.get('/api/master/list', async (req, res) => {
+    try {
+        const { user } = req.query;
+        const pool = await getPool();
+        const request = pool.request();
+
+        let query = `
+            SELECT SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
+                   BaseUnit, PurchasingOrganization, PurchasingGroup,
+                   MaterialGroup, RequirementTracking, Requisitioner,
+                   CreatedBy, CreatedDate, UpdatedBy, UpdatedDate
+            FROM Information
+        `;
+
+        if (user && user !== 'System') {
+            query += ` WHERE CreatedBy = @user`;
+            request.input('user', sql.NVarChar, user);
+        }
+
+        query += ` ORDER BY CreatedDate DESC`;
+
+        const result = await request.query(query);
+
+        res.json({
+            success: true,
+            total: result.recordset.length,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('❌ Master list error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงข้อมูล',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * ค้นหา Master Data ด้วย Serial, Cost, IO, GL
+ * GET /api/master/search?q=xxx&field=serial|cost|io|gl&user=xxx
+ */
+app.get('/api/master/search', async (req, res) => {
+    try {
+        const { q, field, user } = req.query;
+
+        if (!q) {
+            return res.status(400).json({
+                success: false,
+                message: 'กรุณาระบุคำค้นหา'
+            });
+        }
+
+        const pool = await getPool();
+        const request = pool.request();
+        request.input('q', sql.NVarChar, `%${q}%`);
+
+        const fieldMap = {
+            serial: 'SERIAL',
+            cost: 'Cost',
+            io: 'IO',
+            gl: 'GL'
+        };
+
+        const dbField = fieldMap[field] || 'SERIAL';
+
+        let query = `
+            SELECT SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
+                   BaseUnit, PurchasingOrganization, PurchasingGroup,
+                   MaterialGroup, RequirementTracking, Requisitioner,
+                   CreatedBy, CreatedDate, UpdatedBy, UpdatedDate
+            FROM Information
+            WHERE ${dbField} LIKE @q
+        `;
+
+        if (user && user !== 'System') {
+            query += ` AND CreatedBy = @user`;
+            request.input('user', sql.NVarChar, user);
+        }
+
+        query += ` ORDER BY CreatedDate DESC`;
+
+        const result = await request.query(query);
+
+        res.json({
+            success: true,
+            total: result.recordset.length,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('❌ Master search error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการค้นหา',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * เพิ่ม Master Data
+ * POST /api/master/create
+ */
+app.post('/api/master/create', async (req, res) => {
+    try {
+        const {
+            SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
+            BaseUnit, PurchasingOrganization, PurchasingGroup,
+            MaterialGroup, RequirementTracking, Requisitioner, user
+        } = req.body;
+
+        if (!SERIAL) {
+            return res.status(400).json({
+                success: false,
+                message: 'กรุณาระบุ Serial Number'
+            });
+        }
+
+        const pool = await getPool();
+
+        // ตรวจสอบ Serial ซ้ำ
+        const check = await pool.request()
+            .input('serial', sql.NVarChar, SERIAL)
+            .query('SELECT SERIAL FROM Information WHERE SERIAL = @serial');
+
+        if (check.recordset.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: `Serial ${SERIAL} มีอยู่ในระบบแล้ว`
+            });
+        }
+
+        await pool.request()
+            .input('SERIAL', sql.NVarChar, SERIAL)
+            .input('Plant', sql.NVarChar, Plant || '')
+            .input('Detail_Model', sql.NVarChar, Detail_Model || '')
+            .input('Type', sql.NVarChar, Type || '')
+            .input('Cost', sql.NVarChar, Cost || '')
+            .input('IO', sql.NVarChar, IO || '')
+            .input('GL', sql.NVarChar, GL || '')
+            .input('BaseUnit', sql.NVarChar, BaseUnit || '')
+            .input('PurchasingOrganization', sql.NVarChar, PurchasingOrganization || '')
+            .input('PurchasingGroup', sql.NVarChar, PurchasingGroup || '')
+            .input('MaterialGroup', sql.NVarChar, MaterialGroup || '')
+            .input('RequirementTracking', sql.NVarChar, RequirementTracking || '')
+            .input('Requisitioner', sql.NVarChar, Requisitioner || '')
+            .input('CreatedBy', sql.NVarChar, user || 'Unknown')
+            .query(`
+                INSERT INTO Information
+                (SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
+                 BaseUnit, PurchasingOrganization, PurchasingGroup,
+                 MaterialGroup, RequirementTracking, Requisitioner,
+                 CreatedBy, CreatedDate)
+                VALUES
+                (@SERIAL, @Plant, @Detail_Model, @Type, @Cost, @IO, @GL,
+                 @BaseUnit, @PurchasingOrganization, @PurchasingGroup,
+                 @MaterialGroup, @RequirementTracking, @Requisitioner,
+                 @CreatedBy, GETDATE())
+            `);
+
+        console.log(`✅ Master created: ${SERIAL} by ${user}`);
+
+        res.json({
+            success: true,
+            message: `เพิ่มข้อมูล Serial: ${SERIAL} สำเร็จ`
+        });
+    } catch (error) {
+        console.error('❌ Master create error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * แก้ไข Master Data
+ * PUT /api/master/update
+ */
+app.put('/api/master/update', async (req, res) => {
+    try {
+        const {
+            SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
+            BaseUnit, PurchasingOrganization, PurchasingGroup,
+            MaterialGroup, RequirementTracking, Requisitioner, user
+        } = req.body;
+
+        if (!SERIAL) {
+            return res.status(400).json({
+                success: false,
+                message: 'กรุณาระบุ Serial Number'
+            });
+        }
+
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('SERIAL', sql.NVarChar, SERIAL)
+            .input('Plant', sql.NVarChar, Plant || '')
+            .input('Detail_Model', sql.NVarChar, Detail_Model || '')
+            .input('Type', sql.NVarChar, Type || '')
+            .input('Cost', sql.NVarChar, Cost || '')
+            .input('IO', sql.NVarChar, IO || '')
+            .input('GL', sql.NVarChar, GL || '')
+            .input('BaseUnit', sql.NVarChar, BaseUnit || '')
+            .input('PurchasingOrganization', sql.NVarChar, PurchasingOrganization || '')
+            .input('PurchasingGroup', sql.NVarChar, PurchasingGroup || '')
+            .input('MaterialGroup', sql.NVarChar, MaterialGroup || '')
+            .input('RequirementTracking', sql.NVarChar, RequirementTracking || '')
+            .input('Requisitioner', sql.NVarChar, Requisitioner || '')
+            .input('UpdatedBy', sql.NVarChar, user || 'Unknown')
+            .query(`
+                UPDATE Information SET
+                    Plant = @Plant,
+                    Detail_Model = @Detail_Model,
+                    Type = @Type,
+                    Cost = @Cost,
+                    IO = @IO,
+                    GL = @GL,
+                    BaseUnit = @BaseUnit,
+                    PurchasingOrganization = @PurchasingOrganization,
+                    PurchasingGroup = @PurchasingGroup,
+                    MaterialGroup = @MaterialGroup,
+                    RequirementTracking = @RequirementTracking,
+                    Requisitioner = @Requisitioner,
+                    UpdatedBy = @UpdatedBy,
+                    UpdatedDate = GETDATE()
+                WHERE SERIAL = @SERIAL
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({
+                success: false,
+                message: `ไม่พบ Serial: ${SERIAL}`
+            });
+        }
+
+        console.log(`✅ Master updated: ${SERIAL} by ${user}`);
+
+        res.json({
+            success: true,
+            message: `แก้ไขข้อมูล Serial: ${SERIAL} สำเร็จ`
+        });
+    } catch (error) {
+        console.error('❌ Master update error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูล',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * ลบ Master Data
+ * DELETE /api/master/delete
+ * Body: { "serial": "xxx" }
+ */
+app.delete('/api/master/delete', async (req, res) => {
+    try {
+        const { serial } = req.body;
+
+        if (!serial) {
+            return res.status(400).json({
+                success: false,
+                message: 'กรุณาระบุ Serial Number'
+            });
+        }
+
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('serial', sql.NVarChar, serial)
+            .query('DELETE FROM Information WHERE SERIAL = @serial');
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({
+                success: false,
+                message: `ไม่พบ Serial: ${serial}`
+            });
+        }
+
+        console.log(`🗑️ Master deleted: ${serial}`);
+
+        res.json({
+            success: true,
+            message: `ลบข้อมูล Serial: ${serial} สำเร็จ`
+        });
+    } catch (error) {
+        console.error('❌ Master delete error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการลบข้อมูล',
+            error: error.message
+        });
+    }
+});
+
+// ==================== Interface History APIs ====================
+
+/**
+ * ดึงประวัติ Send Interface
+ * GET /api/history?user=xxx&startDate=2024-01-01&endDate=2024-12-31
+ */
+app.get('/api/history', async (req, res) => {
+    try {
+        const { user, startDate, endDate } = req.query;
+        const pool = await getPool();
+        const request = pool.request();
+
+        let query = `
+            SELECT ID, ScanFilename, OutputFilename, CreatedDate, CreatedBy
+            FROM InterfaceHistory
+            WHERE 1=1
+        `;
+
+        if (user && user !== 'System') {
+            query += ` AND CreatedBy = @user`;
+            request.input('user', sql.NVarChar, user);
+        }
+
+        if (startDate) {
+            query += ` AND CreatedDate >= @startDate`;
+            request.input('startDate', sql.DateTime, new Date(startDate));
+        }
+
+        if (endDate) {
+            query += ` AND CreatedDate <= @endDate`;
+            // endDate ให้รวมทั้งวัน โดยเพิ่ม 1 วัน
+            const end = new Date(endDate);
+            end.setDate(end.getDate() + 1);
+            request.input('endDate', sql.DateTime, end);
+        }
+
+        query += ` ORDER BY CreatedDate DESC`;
+
+        const result = await request.query(query);
+
+        res.json({
+            success: true,
+            total: result.recordset.length,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('❌ History error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงประวัติ',
+            error: error.message
+        });
+    }
+});
+
 // ==================== Start Server ====================
 
 app.listen(PORT, () => {
@@ -359,6 +735,12 @@ app.listen(PORT, () => {
     console.log('║   • POST /api/search-serial                ║');
     console.log('║   • POST /api/search-serials               ║');
     console.log('║   • POST /api/save-file                    ║');
+    console.log('║   • GET  /api/master/list                  ║');
+    console.log('║   • GET  /api/master/search                ║');
+    console.log('║   • POST /api/master/create                ║');
+    console.log('║   • PUT  /api/master/update                ║');
+    console.log('║   • DEL  /api/master/delete                ║');
+    console.log('║   • GET  /api/history                      ║');
     console.log('╚════════════════════════════════════════════╝');
     console.log(`📁 Interface Path: ${INTERFACE_PATH}`);
 });

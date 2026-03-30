@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Interface History - SAP PR Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle { color: #666; font-size: 1em; }
+
+        .nav-bar {
+            background: #f8f9fa;
+            padding: 10px 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .nav-bar a {
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .nav-bar a:hover { background: #e3eaff; }
+        .nav-bar a.active { background: #1e3c72; color: white; }
+
+        .nav-bar .user-info {
+            margin-left: auto;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .content {
+            background: white;
+            padding: 25px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .filter-bar label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .filter-bar input {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .filter-bar input:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #1e3c72; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        .data-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .data-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-table tr:hover { background: #f0f4ff; }
+
+        .record-count { color: #666; font-size: 0.9em; margin-bottom: 10px; }
+
+        .table-wrapper { overflow-x: auto; }
+
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            padding: 15px;
+            font-size: 0.85em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon { font-size: 3em; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Send Interface History</div>
+            <div class="subtitle">ประวัติการส่งไฟล์ไป Interface - SAP PR Generator</div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="index.html">OCR Generator</a>
+            <a href="master.html">Master Data</a>
+            <a href="history.html" class="active">Send History</a>
+            <div class="user-info" id="userDisplay"></div>
+        </div>
+
+        <div class="content">
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <label>วันที่เริ่มต้น:</label>
+                <input type="date" id="startDate">
+                <label>วันที่สิ้นสุด:</label>
+                <input type="date" id="endDate">
+                <button class="btn btn-primary" onclick="loadHistory()">ค้นหา</button>
+                <button class="btn btn-secondary" onclick="clearFilter()">ล้างตัวกรอง</button>
+            </div>
+
+            <!-- Record Count -->
+            <div class="record-count" id="recordCount"></div>
+
+            <!-- Data Table -->
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>ชื่อไฟล์ Scan (PDF)</th>
+                            <th>ชื่อไฟล์ Output (JSON)</th>
+                            <th>วันที่-เวลา</th>
+                            <th>ผู้ส่ง</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="5" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">SAP PR Generator v4.0 | Thai Union Group | Interface History</div>
+    </div>
+
+    <script>
+        // ==================== Auth Guard ====================
+        let currentUser = '';
+        let currentUserName = '';
+
+        (function() {
+            var auth = sessionStorage.getItem('msalAccount');
+            if (!auth) {
+                window.location.href = 'login.html';
+                return;
+            }
+            try {
+                var account = JSON.parse(auth);
+                var loginTime = new Date(account.loginTime);
+                var hoursDiff = (new Date() - loginTime) / (1000 * 60 * 60);
+                if (hoursDiff >= 8) {
+                    sessionStorage.removeItem('msalAccount');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                currentUser = account.username || account.email || '';
+                currentUserName = account.name || currentUser;
+                document.getElementById('userDisplay').textContent = currentUserName;
+            } catch (e) {
+                sessionStorage.removeItem('msalAccount');
+                window.location.href = 'login.html';
+                return;
+            }
+        })();
+
+        // ==================== Config ====================
+        const API_URL = 'http://172.32.201.106:3001/api';
+
+        // ==================== Load History ====================
+        async function loadHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
+
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let url = `${API_URL}/history?user=${encodeURIComponent(currentUser)}`;
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.success) {
+                    renderTable(result.data);
+                    document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ`;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+            }
+        }
+
+        // ==================== Render Table ====================
+        function renderTable(data) {
+            const tbody = document.getElementById('historyTableBody');
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="5">
+                        <div class="empty-state">
+                            <div class="icon">📭</div>
+                            <div>ไม่พบประวัติการส่ง Interface</div>
+                        </div>
+                    </td></tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = data.map((row, i) => {
+                const createdDate = row.CreatedDate ? new Date(row.CreatedDate).toLocaleString('th-TH') : '-';
+                return `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${escapeHtml(row.ScanFilename || '-')}</td>
+                        <td>${escapeHtml(row.OutputFilename || '-')}</td>
+                        <td>${createdDate}</td>
+                        <td>${escapeHtml(row.CreatedBy || '-')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ==================== Clear Filter ====================
+        function clearFilter() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            loadHistory();
+        }
+
+        // ==================== Helpers ====================
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ==================== Init ====================
+        loadHistory();
+    </script>
+</body>
+</html>
