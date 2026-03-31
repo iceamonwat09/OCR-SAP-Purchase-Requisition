@@ -523,7 +523,10 @@
             <a href="index.html" style="color: white; background: #1e3c72; text-decoration: none; font-weight: 600; padding: 6px 14px; border-radius: 6px;">OCR Generator</a>
             <a href="master.html" style="color: #1e3c72; text-decoration: none; font-weight: 600; padding: 6px 14px; border-radius: 6px;">Master Data</a>
             <a href="history.html" style="color: #1e3c72; text-decoration: none; font-weight: 600; padding: 6px 14px; border-radius: 6px;">Send History</a>
-            <div style="margin-left: auto; color: #555; font-size: 0.9em;" id="navUserDisplay"></div>
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+                <span style="color: #555; font-size: 0.9em;" id="navUserDisplay"></span>
+                <button onclick="signOut()" style="padding: 5px 12px; background: #ef5350; color: white; border: none; border-radius: 6px; font-size: 0.8em; font-weight: 600; cursor: pointer;">Sign Out</button>
+            </div>
         </div>
 
         <div class="upload-section">
@@ -728,6 +731,12 @@
                 return;
             }
         })();
+
+        // ==================== Sign Out ====================
+        function signOut() {
+            sessionStorage.removeItem('msalAccount');
+            window.location.href = 'login.html';
+        }
 
         // ==================== Global Variables ====================
         const MAX_FILE_SIZE = 20 * 1024 * 1024;
