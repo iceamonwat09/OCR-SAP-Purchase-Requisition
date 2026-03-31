@@ -388,7 +388,8 @@
                 }
                 currentUser = account.username || account.email || '';
                 currentUserName = account.name || currentUser;
-                document.getElementById('userDisplay').textContent = currentUserName;
+                var isGuest = account.isGuest || false;
+                document.getElementById('userDisplay').textContent = isGuest ? (currentUserName + ' (Guest)') : currentUserName;
             } catch (e) {
                 sessionStorage.removeItem('msalAccount');
                 window.location.href = 'login.html';
