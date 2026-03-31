@@ -1286,10 +1286,12 @@
                 return;
             }
 
-            // สร้างชื่อไฟล์
-            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g,'-').replace('T','_');
-            const prDesc = (data.PurReqnDescription || 'PR').substring(0, 30).replace(/[^a-zA-Z0-9ก-๙]/g, '_');
-            const filename = `SAP_PR_${prDesc}_${timestamp}.json`;
+            // สร้างชื่อไฟล์ (Thailand UTC+7)
+            const now = new Date();
+            const thaiTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const dateStr = thaiTime.toISOString().slice(0, 10).replace(/-/g, '');
+            const timeStr = thaiTime.toISOString().slice(11, 19).replace(/:/g, '');
+            const filename = `SAP_PR_${dateStr}_${timeStr}.json`;
 
             sendBtn.disabled = true;
             sendBtnText.innerHTML = '<span class="loading"></span> กำลังส่ง...';
