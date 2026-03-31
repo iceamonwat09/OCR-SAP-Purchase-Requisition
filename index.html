@@ -519,6 +519,13 @@
             <div class="subtitle">OCR Invoice → SAP Purchase Requisition | Database Auto-Fill</div>
         </div>
 
+        <div style="background: #f8f9fa; padding: 10px 25px; display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #e0e0e0;">
+            <a href="index.html" style="color: white; background: #1e3c72; text-decoration: none; font-weight: 600; padding: 6px 14px; border-radius: 6px;">OCR Generator</a>
+            <a href="master.html" style="color: #1e3c72; text-decoration: none; font-weight: 600; padding: 6px 14px; border-radius: 6px;">Master Data</a>
+            <a href="history.html" style="color: #1e3c72; text-decoration: none; font-weight: 600; padding: 6px 14px; border-radius: 6px;">Send History</a>
+            <div style="margin-left: auto; color: #555; font-size: 0.9em;" id="navUserDisplay"></div>
+        </div>
+
         <div class="upload-section">
             <form id="uploadForm">
                 <div class="config-row">
@@ -686,6 +693,9 @@
     <script>
         // ==================== Auth Guard ====================
         // ตรวจสอบว่า Login ผ่าน SSO แล้วหรือยัง
+        let currentUser = '';
+        let currentUserName = '';
+
         (function() {
             var auth = sessionStorage.getItem('msalAccount');
             if (!auth) {
@@ -701,6 +711,10 @@
                     window.location.href = 'login.html';
                     return;
                 }
+                currentUser = account.username || account.email || '';
+                currentUserName = account.name || currentUser;
+                var navEl = document.getElementById('navUserDisplay');
+                if (navEl) navEl.textContent = currentUserName;
             } catch (e) {
                 sessionStorage.removeItem('msalAccount');
                 window.location.href = 'login.html';
@@ -1220,13 +1234,21 @@
             status.className = 'search-status loading';
             status.textContent = '📤 กำลังส่งไฟล์ไป Interface...';
 
+            // ดึงชื่อไฟล์ Scan (PDF) จาก processedResults
+            let scanFilename = '';
+            if (processedResults && processedResults[currentIndex]) {
+                scanFilename = processedResults[currentIndex].filename || '';
+            }
+
             try {
                 const response = await fetch(`${apiUrl}/save-file`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         filename: filename,
-                        content: data
+                        content: data,
+                        scanFilename: scanFilename,
+                        user: currentUser
                     })
                 });
 

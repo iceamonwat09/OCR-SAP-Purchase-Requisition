@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Data Management - SAP PR Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle { color: #666; font-size: 1em; }
+
+        .nav-bar {
+            background: #f8f9fa;
+            padding: 10px 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .nav-bar a {
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .nav-bar a:hover { background: #e3eaff; }
+        .nav-bar a.active { background: #1e3c72; color: white; }
+
+        .nav-bar .user-info {
+            margin-left: auto;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .content {
+            background: white;
+            padding: 25px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .toolbar input, .toolbar select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .toolbar input:focus, .toolbar select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #1e3c72; color: white; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        .data-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .data-table tr:hover { background: #f0f4ff; }
+
+        .data-table .actions { white-space: nowrap; }
+        .data-table .actions button {
+            padding: 4px 10px;
+            font-size: 0.8em;
+            margin-right: 4px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal h3 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.85em;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .form-group input {
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .status-msg {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 0.9em;
+        }
+
+        .status-msg.success { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .status-msg.error { display: block; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+
+        .record-count { color: #666; font-size: 0.9em; }
+
+        .table-wrapper { overflow-x: auto; }
+
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            padding: 15px;
+            font-size: 0.85em;
+        }
+
+        .audit-info { font-size: 0.75em; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Master Data Management</div>
+            <div class="subtitle">จัดการข้อมูล Master - SAP PR Generator</div>
+        </div>
+
+        <div class="nav-bar">
+            <a href="index.html">OCR Generator</a>
+            <a href="master.html" class="active">Master Data</a>
+            <a href="history.html">Send History</a>
+            <div class="user-info" id="userDisplay"></div>
+        </div>
+
+        <div class="content">
+            <!-- Status Message -->
+            <div class="status-msg" id="statusMsg"></div>
+
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <select id="searchField">
+                    <option value="serial">Serial</option>
+                    <option value="cost">Cost Center</option>
+                    <option value="io">IO (Order ID)</option>
+                    <option value="gl">GL Account</option>
+                </select>
+                <input type="text" id="searchInput" placeholder="ค้นหา..." style="min-width: 250px;" onkeydown="if(event.key==='Enter') searchMaster()">
+                <button class="btn btn-primary" onclick="searchMaster()">ค้นหา</button>
+                <button class="btn btn-secondary" onclick="loadMasterList()">แสดงทั้งหมด</button>
+                <div style="margin-left: auto;">
+                    <button class="btn btn-success" onclick="openCreateModal()">+ เพิ่ม Master</button>
+                </div>
+            </div>
+
+            <!-- Record Count -->
+            <div class="record-count" id="recordCount"></div>
+
+            <!-- Data Table -->
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Serial</th>
+                            <th>Plant</th>
+                            <th>Detail/Model</th>
+                            <th>Type</th>
+                            <th>Cost Center</th>
+                            <th>IO</th>
+                            <th>GL</th>
+                            <th>Base Unit</th>
+                            <th>Purch Org</th>
+                            <th>Purch Group</th>
+                            <th>Mat Group</th>
+                            <th>Created By</th>
+                            <th>Created Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterTableBody">
+                        <tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">SAP PR Generator v4.0 | Thai Union Group | Master Data Management</div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div class="modal-overlay" id="masterModal">
+        <div class="modal">
+            <h3 id="modalTitle">เพิ่ม Master Data</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Serial Number *</label>
+                    <input type="text" id="fSerial">
+                </div>
+                <div class="form-group">
+                    <label>Plant</label>
+                    <input type="text" id="fPlant">
+                </div>
+                <div class="form-group">
+                    <label>Detail/Model</label>
+                    <input type="text" id="fDetailModel">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <input type="text" id="fType">
+                </div>
+                <div class="form-group">
+                    <label>Cost Center</label>
+                    <input type="text" id="fCost">
+                </div>
+                <div class="form-group">
+                    <label>IO (Internal Order)</label>
+                    <input type="text" id="fIO">
+                </div>
+                <div class="form-group">
+                    <label>GL Account</label>
+                    <input type="text" id="fGL">
+                </div>
+                <div class="form-group">
+                    <label>Base Unit</label>
+                    <input type="text" id="fBaseUnit">
+                </div>
+                <div class="form-group">
+                    <label>Purchasing Organization</label>
+                    <input type="text" id="fPurchOrg">
+                </div>
+                <div class="form-group">
+                    <label>Purchasing Group</label>
+                    <input type="text" id="fPurchGroup">
+                </div>
+                <div class="form-group">
+                    <label>Material Group</label>
+                    <input type="text" id="fMatGroup">
+                </div>
+                <div class="form-group">
+                    <label>Requirement Tracking</label>
+                    <input type="text" id="fReqTracking">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Requisitioner</label>
+                    <input type="text" id="fRequisitioner">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+                <button class="btn btn-success" id="modalSaveBtn" onclick="saveMaster()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== Auth Guard ====================
+        let currentUser = '';
+        let currentUserName = '';
+
+        (function() {
+            var auth = sessionStorage.getItem('msalAccount');
+            if (!auth) {
+                window.location.href = 'login.html';
+                return;
+            }
+            try {
+                var account = JSON.parse(auth);
+                var loginTime = new Date(account.loginTime);
+                var hoursDiff = (new Date() - loginTime) / (1000 * 60 * 60);
+                if (hoursDiff >= 8) {
+                    sessionStorage.removeItem('msalAccount');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                currentUser = account.username || account.email || '';
+                currentUserName = account.name || currentUser;
+                document.getElementById('userDisplay').textContent = currentUserName;
+            } catch (e) {
+                sessionStorage.removeItem('msalAccount');
+                window.location.href = 'login.html';
+                return;
+            }
+        })();
+
+        // ==================== Config ====================
+        const API_URL = 'http://172.32.201.106:3001/api';
+        let editMode = false;
+
+        // ==================== Load Master Data ====================
+        async function loadMasterList() {
+            const tbody = document.getElementById('masterTableBody');
+            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
+            document.getElementById('searchInput').value = '';
+
+            try {
+                const response = await fetch(`${API_URL}/master/list?user=${encodeURIComponent(currentUser)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    renderTable(result.data);
+                    document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ`;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+            }
+        }
+
+        // ==================== Search ====================
+        async function searchMaster() {
+            const q = document.getElementById('searchInput').value.trim();
+            const field = document.getElementById('searchField').value;
+
+            if (!q) {
+                loadMasterList();
+                return;
+            }
+
+            const tbody = document.getElementById('masterTableBody');
+            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังค้นหา...</td></tr>';
+
+            try {
+                const response = await fetch(`${API_URL}/master/search?q=${encodeURIComponent(q)}&field=${field}&user=${encodeURIComponent(currentUser)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    renderTable(result.data);
+                    document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ (ค้นหา: "${q}")`;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+            }
+        }
+
+        // ==================== Render Table ====================
+        function renderTable(data) {
+            const tbody = document.getElementById('masterTableBody');
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">ไม่พบข้อมูล</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map((row, i) => {
+                const createdDate = row.CreatedDate ? new Date(row.CreatedDate).toLocaleString('th-TH') : '-';
+                return `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><strong>${escapeHtml(row.SERIAL || '')}</strong></td>
+                        <td>${escapeHtml(row.Plant || '')}</td>
+                        <td title="${escapeHtml(row.Detail_Model || '')}">${escapeHtml(row.Detail_Model || '')}</td>
+                        <td>${escapeHtml(row.Type || '')}</td>
+                        <td>${escapeHtml(row.Cost || '')}</td>
+                        <td>${escapeHtml(row.IO || '')}</td>
+                        <td>${escapeHtml(row.GL || '')}</td>
+                        <td>${escapeHtml(row.BaseUnit || '')}</td>
+                        <td>${escapeHtml(row.PurchasingOrganization || '')}</td>
+                        <td>${escapeHtml(row.PurchasingGroup || '')}</td>
+                        <td>${escapeHtml(row.MaterialGroup || '')}</td>
+                        <td class="audit-info">${escapeHtml(row.CreatedBy || '-')}</td>
+                        <td class="audit-info">${createdDate}</td>
+                        <td class="actions">
+                            <button class="btn btn-warning" onclick='openEditModal(${JSON.stringify(row).replace(/'/g, "&#39;")})'>แก้ไข</button>
+                            <button class="btn btn-danger" onclick="deleteMaster('${escapeHtml(row.SERIAL)}')">ลบ</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ==================== Modal ====================
+        function openCreateModal() {
+            editMode = false;
+            document.getElementById('modalTitle').textContent = 'เพิ่ม Master Data';
+            document.getElementById('fSerial').disabled = false;
+            clearForm();
+            document.getElementById('masterModal').classList.add('active');
+        }
+
+        function openEditModal(data) {
+            editMode = true;
+            document.getElementById('modalTitle').textContent = 'แก้ไข Master Data';
+            document.getElementById('fSerial').value = data.SERIAL || '';
+            document.getElementById('fSerial').disabled = true;
+            document.getElementById('fPlant').value = data.Plant || '';
+            document.getElementById('fDetailModel').value = data.Detail_Model || '';
+            document.getElementById('fType').value = data.Type || '';
+            document.getElementById('fCost').value = data.Cost || '';
+            document.getElementById('fIO').value = data.IO || '';
+            document.getElementById('fGL').value = data.GL || '';
+            document.getElementById('fBaseUnit').value = data.BaseUnit || '';
+            document.getElementById('fPurchOrg').value = data.PurchasingOrganization || '';
+            document.getElementById('fPurchGroup').value = data.PurchasingGroup || '';
+            document.getElementById('fMatGroup').value = data.MaterialGroup || '';
+            document.getElementById('fReqTracking').value = data.RequirementTracking || '';
+            document.getElementById('fRequisitioner').value = data.Requisitioner || '';
+            document.getElementById('masterModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('masterModal').classList.remove('active');
+        }
+
+        function clearForm() {
+            ['fSerial','fPlant','fDetailModel','fType','fCost','fIO','fGL','fBaseUnit','fPurchOrg','fPurchGroup','fMatGroup','fReqTracking','fRequisitioner'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+        }
+
+        // ==================== Save (Create / Update) ====================
+        async function saveMaster() {
+            const serial = document.getElementById('fSerial').value.trim();
+            if (!serial) {
+                alert('กรุณาระบุ Serial Number');
+                return;
+            }
+
+            const payload = {
+                SERIAL: serial,
+                Plant: document.getElementById('fPlant').value.trim(),
+                Detail_Model: document.getElementById('fDetailModel').value.trim(),
+                Type: document.getElementById('fType').value.trim(),
+                Cost: document.getElementById('fCost').value.trim(),
+                IO: document.getElementById('fIO').value.trim(),
+                GL: document.getElementById('fGL').value.trim(),
+                BaseUnit: document.getElementById('fBaseUnit').value.trim(),
+                PurchasingOrganization: document.getElementById('fPurchOrg').value.trim(),
+                PurchasingGroup: document.getElementById('fPurchGroup').value.trim(),
+                MaterialGroup: document.getElementById('fMatGroup').value.trim(),
+                RequirementTracking: document.getElementById('fReqTracking').value.trim(),
+                Requisitioner: document.getElementById('fRequisitioner').value.trim(),
+                user: currentUser
+            };
+
+            const url = editMode ? `${API_URL}/master/update` : `${API_URL}/master/create`;
+            const method = editMode ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(result.message, 'success');
+                    closeModal();
+                    loadMasterList();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        // ==================== Delete ====================
+        async function deleteMaster(serial) {
+            if (!confirm(`ยืนยันการลบ Serial: ${serial} ?`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/master/delete`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serial: serial })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(result.message, 'success');
+                    loadMasterList();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
+        }
+
+        // ==================== Helpers ====================
+        function showStatus(msg, type) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = msg;
+            el.className = 'status-msg ' + type;
+            setTimeout(() => { el.className = 'status-msg'; }, 5000);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ==================== Init ====================
+        loadMasterList();
+    </script>
+</body>
+</html>
