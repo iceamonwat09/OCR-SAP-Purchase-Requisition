@@ -488,6 +488,64 @@
             color: #b45309;
         }
 
+        /* ==================== Divider ==================== */
+        .login-divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            gap: 12px;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .login-divider span {
+            color: rgba(30, 41, 59, 0.35);
+            font-size: 0.78em;
+            font-weight: 400;
+            white-space: nowrap;
+        }
+
+        /* ==================== Guest Button ==================== */
+        .guest-btn {
+            width: 100%;
+            padding: 14px 24px;
+            background: rgba(100, 116, 139, 0.06);
+            border: 1px solid rgba(100, 116, 139, 0.15);
+            border-radius: 14px;
+            color: rgba(30, 41, 59, 0.6);
+            font-family: 'Prompt', sans-serif;
+            font-size: 0.92em;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .guest-btn:hover {
+            background: rgba(100, 116, 139, 0.1);
+            border-color: rgba(100, 116, 139, 0.25);
+            color: rgba(30, 41, 59, 0.8);
+            transform: translateY(-1px);
+        }
+
+        .guest-btn:active { transform: translateY(0); }
+
+        .guest-note {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.72em;
+            color: rgba(30, 41, 59, 0.3);
+        }
+
         /* ==================== Responsive ==================== */
         @media (max-width: 480px) {
             .login-card { padding: 40px 25px; }
@@ -540,6 +598,17 @@
                 <span id="signinBtnText">Sign in with Microsoft 365</span>
                 <div class="btn-loading" id="btnLoading"></div>
             </button>
+
+            <!-- Divider -->
+            <div class="login-divider" id="loginDivider">
+                <span>หรือ</span>
+            </div>
+
+            <!-- Guest Access Button -->
+            <button class="guest-btn" id="guestBtn" onclick="guestAccess()">
+                &#x1F464; เข้าใช้งานชั่วคราว (ไม่ต้อง Login)
+            </button>
+            <div class="guest-note" id="guestNote">สำหรับทดสอบระบบระหว่างรอ Azure AD Configuration</div>
 
             <!-- User Info (shown after login) -->
             <div class="user-info" id="userInfo">
@@ -638,6 +707,7 @@
                 statusText.textContent = 'Configuration required';
                 configWarning.style.display = 'block';
                 signinBtn.disabled = true;
+                document.getElementById('loginDivider').style.display = 'none';
                 return false;
             }
 
@@ -689,18 +759,53 @@
             }
         }
 
+        // ==================== Guest Access ====================
+        function guestAccess() {
+            sessionStorage.setItem('msalAccount', JSON.stringify({
+                name: 'System',
+                username: 'System',
+                localAccountId: 'guest',
+                tenantId: 'local',
+                loginTime: new Date().toISOString(),
+                isGuest: true
+            }));
+
+            signinBtn.style.display = 'none';
+            document.getElementById('loginDivider').style.display = 'none';
+            document.getElementById('guestBtn').style.display = 'none';
+            document.getElementById('guestNote').style.display = 'none';
+
+            var userInfo = document.getElementById('userInfo');
+            userInfo.style.display = 'block';
+            document.getElementById('userAvatar').textContent = 'SY';
+            document.getElementById('userName').textContent = 'System (Temporary Access)';
+            document.getElementById('userEmail').textContent = 'Guest Mode';
+
+            statusDot.className = 'status-dot ready';
+            statusText.textContent = 'Guest access granted';
+            hideMessage();
+
+            setTimeout(function() {
+                window.location.href = 'index.html';
+            }, 1200);
+        }
+
         function handleLoggedInUser(account) {
-            // Store auth data in sessionStorage
+            // Store auth data in sessionStorage (User = Email จาก SSO)
             sessionStorage.setItem('msalAccount', JSON.stringify({
                 name: account.name,
                 username: account.username,
                 localAccountId: account.localAccountId,
                 tenantId: account.tenantId,
-                loginTime: new Date().toISOString()
+                loginTime: new Date().toISOString(),
+                isGuest: false
             }));
 
-            // Show user info
+            // Show user info, hide login buttons
             signinBtn.style.display = 'none';
+            document.getElementById('loginDivider').style.display = 'none';
+            document.getElementById('guestBtn').style.display = 'none';
+            document.getElementById('guestNote').style.display = 'none';
             const userInfo = document.getElementById('userInfo');
             userInfo.style.display = 'block';
 
@@ -781,6 +886,8 @@
                     statusDot.className = 'status-dot error';
                     statusText.textContent = 'Failed to load authentication library';
                     showMessage('Cannot load MSAL.js - please check internet connection', 'error');
+                    signinBtn.disabled = true;
+                    document.getElementById('loginDivider').style.display = 'none';
                 }
             }, 800);
         });

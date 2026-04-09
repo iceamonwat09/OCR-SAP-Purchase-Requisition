@@ -505,6 +505,65 @@
         .ocr-info-label { font-weight: 600; color: #666; }
         .ocr-info-value { color: #333; }
 
+        /* Summary Box */
+        .ocr-summary-box {
+            margin-top: 8px;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border: 1px solid #c7d2fe;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .ocr-summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ocr-summary-label {
+            font-weight: 600;
+            color: #4338ca;
+            font-size: 0.9em;
+        }
+
+        .ocr-summary-value {
+            font-weight: 700;
+            color: #1e40af;
+            font-size: 1.15em;
+        }
+
+        .ocr-user-info {
+            font-size: 0.78em;
+            color: #6366f1;
+            margin-top: 4px;
+        }
+
+        /* Item Amount */
+        .item-amount-row {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .item-amount-label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #16a34a;
+        }
+
+        .item-amount-value {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: #15803d;
+        }
+
         @media (max-width: 768px) {
             .config-row { grid-template-columns: 1fr; }
             .form-grid { grid-template-columns: 1fr 1fr; }
@@ -572,6 +631,13 @@
             <!-- OCR Info -->
             <div class="ocr-info-box" id="ocrInfoBox">
                 <div class="ocr-info-grid" id="ocrInfoGrid"></div>
+                <div class="ocr-summary-box" id="ocrSummaryBox">
+                    <div class="ocr-summary-row">
+                        <span class="ocr-summary-label">Total Amount (all items)</span>
+                        <span class="ocr-summary-value" id="ocrTotalAmount">0.00 THB</span>
+                    </div>
+                    <div class="ocr-user-info" id="ocrUserInfo"></div>
+                </div>
             </div>
 
             <!-- Search DB Section -->
@@ -928,6 +994,10 @@
                         <div class="item-form-group"><label>Requisitioner</label><input type="text" class="item-requisitioner" value="${item.RequisitionerName || ''}"></div>
                         <div class="item-form-group"><label>Delivery Date</label><input type="date" class="item-delivery-date" value="${dateInput}"><div class="date-display">📅 ${dateDisplay}</div></div>
                     </div>
+                    <div class="item-amount-row">
+                        <span class="item-amount-label">Amount (Price x Qty):</span>
+                        <span class="item-amount-value" data-item-amount="${idx}">0.00</span>
+                    </div>
                     <div class="acct-assignment-section">
                         <div class="acct-assignment-title">💰 Account Assignment</div>
                         <div class="item-form-grid">
@@ -948,7 +1018,57 @@
                 });
             });
 
+            // Price/Qty change listener - recalculate amounts
+            document.querySelectorAll('.item-price, .item-qty').forEach(input => {
+                input.addEventListener('input', recalculateAmounts);
+            });
+
+            // Initial calculation
+            recalculateAmounts();
+            showUserInfo();
+
             document.getElementById('searchStatus').className = 'search-status';
+        }
+
+        // ==================== Amount Calculation ====================
+        function recalculateAmounts() {
+            let grandTotal = 0;
+            let currency = 'THB';
+
+            document.querySelectorAll('.item-card').forEach((card, idx) => {
+                const price = parseFloat(card.querySelector('.item-price').value) || 0;
+                const qty = parseFloat(card.querySelector('.item-qty').value) || 0;
+                const itemCurrency = card.querySelector('.item-currency').value || 'THB';
+                const amount = price * qty;
+                grandTotal += amount;
+                currency = itemCurrency;
+
+                const amountEl = card.querySelector('[data-item-amount="' + idx + '"]');
+                if (amountEl) {
+                    amountEl.textContent = amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + itemCurrency;
+                }
+            });
+
+            // Update summary
+            const summaryBox = document.getElementById('ocrSummaryBox');
+            const totalEl = document.getElementById('ocrTotalAmount');
+            if (summaryBox && totalEl) {
+                summaryBox.style.display = 'block';
+                totalEl.textContent = grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
+            }
+        }
+
+        // ==================== User Info Display ====================
+        function showUserInfo() {
+            var userInfoEl = document.getElementById('ocrUserInfo');
+            if (!userInfoEl) return;
+            try {
+                var account = JSON.parse(sessionStorage.getItem('msalAccount') || '{}');
+                var userLabel = account.isGuest ? 'System (Guest)' : (account.username || 'Unknown');
+                userInfoEl.textContent = 'User: ' + userLabel;
+            } catch (e) {
+                userInfoEl.textContent = '';
+            }
         }
 
         // ==================== API Functions ====================
