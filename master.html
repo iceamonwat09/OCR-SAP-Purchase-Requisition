@@ -57,11 +57,28 @@
         .nav-bar a:hover { background: #e3eaff; }
         .nav-bar a.active { background: #1e3c72; color: white; }
 
-        .nav-bar .user-info {
+        .nav-right {
             margin-left: auto;
-            color: #555;
-            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
+
+        .nav-right .user-info { color: #555; font-size: 0.9em; }
+
+        .btn-signout {
+            padding: 5px 12px;
+            background: #ef5350;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-signout:hover { opacity: 0.85; }
 
         .content {
             background: white;
@@ -102,6 +119,7 @@
         }
 
         .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-primary { background: #1e3c72; color: white; }
         .btn-success { background: #4caf50; color: white; }
         .btn-danger { background: #f44336; color: white; }
@@ -222,6 +240,32 @@
 
         .table-wrapper { overflow-x: auto; }
 
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            padding: 6px 14px;
+            border: 1px solid #d0d0d0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #1e3c72;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) { background: #e3eaff; }
+        .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .pagination button.active { background: #1e3c72; color: white; border-color: #1e3c72; }
+        .pagination .page-info { font-size: 0.85em; color: #666; padding: 0 8px; }
+
         .footer {
             text-align: center;
             color: rgba(255,255,255,0.6);
@@ -243,7 +287,10 @@
             <a href="index.html">OCR Generator</a>
             <a href="master.html" class="active">Master Data</a>
             <a href="history.html">Send History</a>
-            <div class="user-info" id="userDisplay"></div>
+            <div class="nav-right">
+                <span class="user-info" id="userDisplay"></span>
+                <button class="btn-signout" onclick="signOut()">Sign Out</button>
+            </div>
         </div>
 
         <div class="content">
@@ -296,6 +343,9 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination"></div>
         </div>
 
         <div class="footer">SAP PR Generator v4.0 | Thai Union Group | Master Data Management</div>
@@ -388,7 +438,8 @@
                 }
                 currentUser = account.username || account.email || '';
                 currentUserName = account.name || currentUser;
-                document.getElementById('userDisplay').textContent = currentUserName;
+                var isGuest = account.isGuest || false;
+                document.getElementById('userDisplay').textContent = isGuest ? (currentUserName + ' (Guest)') : currentUserName;
             } catch (e) {
                 sessionStorage.removeItem('msalAccount');
                 window.location.href = 'login.html';
@@ -396,22 +447,34 @@
             }
         })();
 
+        // ==================== Sign Out ====================
+        function signOut() {
+            sessionStorage.removeItem('msalAccount');
+            window.location.href = 'login.html';
+        }
+
         // ==================== Config ====================
         const API_URL = 'http://172.32.201.106:3001/api';
+        const PAGE_SIZE = 50;
         let editMode = false;
+        let allData = [];
+        let currentPage = 1;
 
         // ==================== Load Master Data ====================
         async function loadMasterList() {
             const tbody = document.getElementById('masterTableBody');
             tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
             document.getElementById('searchInput').value = '';
+            document.getElementById('pagination').innerHTML = '';
 
             try {
                 const response = await fetch(`${API_URL}/master/list?user=${encodeURIComponent(currentUser)}`);
                 const result = await response.json();
 
                 if (result.success) {
-                    renderTable(result.data);
+                    allData = result.data;
+                    currentPage = 1;
+                    renderPage();
                     document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ`;
                 } else {
                     throw new Error(result.message);
@@ -433,13 +496,16 @@
 
             const tbody = document.getElementById('masterTableBody');
             tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังค้นหา...</td></tr>';
+            document.getElementById('pagination').innerHTML = '';
 
             try {
                 const response = await fetch(`${API_URL}/master/search?q=${encodeURIComponent(q)}&field=${field}&user=${encodeURIComponent(currentUser)}`);
                 const result = await response.json();
 
                 if (result.success) {
-                    renderTable(result.data);
+                    allData = result.data;
+                    currentPage = 1;
+                    renderPage();
                     document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ (ค้นหา: "${q}")`;
                 } else {
                     throw new Error(result.message);
@@ -449,8 +515,59 @@
             }
         }
 
+        // ==================== Pagination ====================
+        function renderPage() {
+            const totalPages = Math.max(1, Math.ceil(allData.length / PAGE_SIZE));
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            const pageData = allData.slice(start, end);
+
+            renderTable(pageData, start);
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+            const el = document.getElementById('pagination');
+            if (totalPages <= 1) {
+                el.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            html += `<button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>&laquo;</button>`;
+            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lsaquo; ก่อนหน้า</button>`;
+
+            // Show page numbers
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) html += `<span class="page-info">...</span>`;
+
+            for (let p = startPage; p <= endPage; p++) {
+                html += `<button onclick="goToPage(${p})" class="${p === currentPage ? 'active' : ''}">${p}</button>`;
+            }
+
+            if (endPage < totalPages) html += `<span class="page-info">...</span>`;
+
+            html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>ถัดไป &rsaquo;</button>`;
+            html += `<button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>&raquo;</button>`;
+            html += `<span class="page-info">หน้า ${currentPage} / ${totalPages}</span>`;
+
+            el.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.max(1, Math.ceil(allData.length / PAGE_SIZE));
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderPage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         // ==================== Render Table ====================
-        function renderTable(data) {
+        function renderTable(data, startOffset) {
             const tbody = document.getElementById('masterTableBody');
 
             if (!data || data.length === 0) {
@@ -462,7 +579,7 @@
                 const createdDate = row.CreatedDate ? new Date(row.CreatedDate).toLocaleString('th-TH') : '-';
                 return `
                     <tr>
-                        <td>${i + 1}</td>
+                        <td>${startOffset + i + 1}</td>
                         <td><strong>${escapeHtml(row.SERIAL || '')}</strong></td>
                         <td>${escapeHtml(row.Plant || '')}</td>
                         <td title="${escapeHtml(row.Detail_Model || '')}">${escapeHtml(row.Detail_Model || '')}</td>
