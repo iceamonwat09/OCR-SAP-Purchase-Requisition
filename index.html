@@ -427,6 +427,19 @@
             font-weight: 600;
         }
 
+        .btn-delete-item {
+            background: #ef5350;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .btn-delete-item:hover { background: #c62828; }
+
         .item-form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -927,6 +940,36 @@
             if (totalEl) totalEl.textContent = formatNumber(total);
         }
 
+        // ==================== Delete Item ====================
+        function deleteItem(btn) {
+            const card = btn.closest('.item-card');
+            if (!card) return;
+            if (!confirm('ยืนยันการลบรายการนี้?')) return;
+
+            const idx = parseInt(card.dataset.index);
+
+            // 1. ลบออกจาก memory (processedResults) เพื่อให้ CSV export + navigation sync
+            const result = processedResults[currentIndex];
+            if (result && result.invoice && Array.isArray(result.invoice.to_PurchaseReqnItem) && !isNaN(idx)) {
+                result.invoice.to_PurchaseReqnItem.splice(idx, 1);
+            }
+
+            // 2. ลบ DOM element
+            card.remove();
+
+            // 3. Re-index + re-number remaining cards
+            document.querySelectorAll('.item-card').forEach((c, i) => {
+                c.dataset.index = i;
+                const numEl = c.querySelector('.item-number');
+                if (numEl) numEl.textContent = `#${i + 1}`;
+            });
+
+            // 4. Update item count + recalc total
+            const remaining = document.querySelectorAll('.item-card').length;
+            document.getElementById('itemCount').textContent = remaining;
+            recalcAllAmounts();
+        }
+
         // ==================== Event Listeners ====================
         uploadArea.addEventListener('click', () => fileInput.click());
         uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#2a5298'; });
@@ -1073,6 +1116,7 @@
                         <span class="item-number">#${idx + 1}</span>
                         <span class="item-description">${item.PurchaseRequisitionItemText || '-'}</span>
                         ${serial ? `<span class="item-serial">S/N: ${serial}</span>` : ''}
+                        <button type="button" class="btn-delete-item" onclick="deleteItem(this)">🗑️ ลบ</button>
                     </div>
                     <div class="item-form-grid">
                         <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value="${item.Plant || ''}"></div>
@@ -1549,6 +1593,7 @@
                 <div class="item-card-header">
                     <span class="item-number">#1</span>
                     <span class="item-description">-</span>
+                    <button type="button" class="btn-delete-item" onclick="deleteItem(this)">🗑️ ลบ</button>
                 </div>
                 <div class="item-form-grid">
                     <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value=""></div>
