@@ -326,6 +326,7 @@
                             <th>Plant</th>
                             <th>Detail/Model</th>
                             <th>Type</th>
+                            <th>Department</th>
                             <th>Cost Center</th>
                             <th>IO</th>
                             <th>GL</th>
@@ -339,7 +340,7 @@
                         </tr>
                     </thead>
                     <tbody id="masterTableBody">
-                        <tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>
+                        <tr><td colspan="16" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -371,6 +372,10 @@
                 <div class="form-group">
                     <label>Type</label>
                     <input type="text" id="fType">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" id="fDepartment">
                 </div>
                 <div class="form-group">
                     <label>Cost Center</label>
@@ -463,7 +468,7 @@
         // ==================== Load Master Data ====================
         async function loadMasterList() {
             const tbody = document.getElementById('masterTableBody');
-            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
             document.getElementById('searchInput').value = '';
             document.getElementById('pagination').innerHTML = '';
 
@@ -480,7 +485,7 @@
                     throw new Error(result.message);
                 }
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
             }
         }
 
@@ -495,7 +500,7 @@
             }
 
             const tbody = document.getElementById('masterTableBody');
-            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">กำลังค้นหา...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:30px; color:#999;">กำลังค้นหา...</td></tr>';
             document.getElementById('pagination').innerHTML = '';
 
             try {
@@ -511,7 +516,7 @@
                     throw new Error(result.message);
                 }
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
             }
         }
 
@@ -571,7 +576,7 @@
             const tbody = document.getElementById('masterTableBody');
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:30px; color:#999;">ไม่พบข้อมูล</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; padding:30px; color:#999;">ไม่พบข้อมูล</td></tr>';
                 return;
             }
 
@@ -584,6 +589,7 @@
                         <td>${escapeHtml(row.Plant || '')}</td>
                         <td title="${escapeHtml(row.Detail_Model || '')}">${escapeHtml(row.Detail_Model || '')}</td>
                         <td>${escapeHtml(row.Type || '')}</td>
+                        <td>${escapeHtml(row.Department || '')}</td>
                         <td>${escapeHtml(row.Cost || '')}</td>
                         <td>${escapeHtml(row.IO || '')}</td>
                         <td>${escapeHtml(row.GL || '')}</td>
@@ -619,6 +625,7 @@
             document.getElementById('fPlant').value = data.Plant || '';
             document.getElementById('fDetailModel').value = data.Detail_Model || '';
             document.getElementById('fType').value = data.Type || '';
+            document.getElementById('fDepartment').value = data.Department || '';
             document.getElementById('fCost').value = data.Cost || '';
             document.getElementById('fIO').value = data.IO || '';
             document.getElementById('fGL').value = data.GL || '';
@@ -636,7 +643,7 @@
         }
 
         function clearForm() {
-            ['fSerial','fPlant','fDetailModel','fType','fCost','fIO','fGL','fBaseUnit','fPurchOrg','fPurchGroup','fMatGroup','fReqTracking','fRequisitioner'].forEach(id => {
+            ['fSerial','fPlant','fDetailModel','fType','fDepartment','fCost','fIO','fGL','fBaseUnit','fPurchOrg','fPurchGroup','fMatGroup','fReqTracking','fRequisitioner'].forEach(id => {
                 document.getElementById(id).value = '';
             });
         }
@@ -654,6 +661,7 @@
                 Plant: document.getElementById('fPlant').value.trim(),
                 Detail_Model: document.getElementById('fDetailModel').value.trim(),
                 Type: document.getElementById('fType').value.trim(),
+                Department: document.getElementById('fDepartment').value.trim(),
                 Cost: document.getElementById('fCost').value.trim(),
                 IO: document.getElementById('fIO').value.trim(),
                 GL: document.getElementById('fGL').value.trim(),

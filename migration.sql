@@ -76,5 +76,40 @@ BEGIN
 END
 GO
 
+-- =====================================================
+-- 4. เพิ่มคอลัมน์ Department ในตาราง Information
+-- =====================================================
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Information') AND name = 'Department')
+BEGIN
+    ALTER TABLE Information ADD Department NVARCHAR(100) NULL;
+    PRINT 'Added column: Information.Department';
+END
+GO
+
+-- Index สำหรับการค้นหาตาม Department
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Information_Department' AND object_id = OBJECT_ID('Information'))
+BEGIN
+    CREATE NONCLUSTERED INDEX IX_Information_Department ON Information(Department);
+    PRINT 'Created index: IX_Information_Department';
+END
+GO
+
+-- =====================================================
+-- 5. สร้างตาราง ProcessFlow สำหรับเก็บ Webhook แต่ละ process
+-- =====================================================
+
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID('ProcessFlow') AND type = 'U')
+BEGIN
+    CREATE TABLE ProcessFlow (
+        ID           INT IDENTITY(1,1) PRIMARY KEY,
+        Description  NVARCHAR(200)  NOT NULL,   -- ชื่อ/คำอธิบาย process
+        WebHook      NVARCHAR(500)  NOT NULL,   -- URL ของ webhook
+        Remark       NVARCHAR(500)  NULL        -- หมายเหตุ
+    );
+    PRINT 'Created table: ProcessFlow';
+END
+GO
+
 PRINT '✅ Migration completed successfully!';
 GO

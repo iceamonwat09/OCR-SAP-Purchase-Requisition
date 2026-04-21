@@ -376,7 +376,7 @@ app.get('/api/master/list', async (req, res) => {
         let query = `
             SELECT SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
                    BaseUnit, PurchasingOrganization, PurchasingGroup,
-                   MaterialGroup, RequirementTracking, Requisitioner,
+                   MaterialGroup, RequirementTracking, Requisitioner, Department,
                    CreatedBy, CreatedDate, UpdatedBy, UpdatedDate
             FROM Information
         `;
@@ -436,7 +436,7 @@ app.get('/api/master/search', async (req, res) => {
         let query = `
             SELECT SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
                    BaseUnit, PurchasingOrganization, PurchasingGroup,
-                   MaterialGroup, RequirementTracking, Requisitioner,
+                   MaterialGroup, RequirementTracking, Requisitioner, Department,
                    CreatedBy, CreatedDate, UpdatedBy, UpdatedDate
             FROM Information
             WHERE ${dbField} LIKE @q
@@ -475,7 +475,7 @@ app.post('/api/master/create', async (req, res) => {
         const {
             SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
             BaseUnit, PurchasingOrganization, PurchasingGroup,
-            MaterialGroup, RequirementTracking, Requisitioner, user
+            MaterialGroup, RequirementTracking, Requisitioner, Department, user
         } = req.body;
 
         if (!SERIAL) {
@@ -513,17 +513,18 @@ app.post('/api/master/create', async (req, res) => {
             .input('MaterialGroup', sql.NVarChar, MaterialGroup || '')
             .input('RequirementTracking', sql.NVarChar, RequirementTracking || '')
             .input('Requisitioner', sql.NVarChar, Requisitioner || '')
+            .input('Department', sql.NVarChar, Department || '')
             .input('CreatedBy', sql.NVarChar, user || 'Unknown')
             .query(`
                 INSERT INTO Information
                 (SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
                  BaseUnit, PurchasingOrganization, PurchasingGroup,
-                 MaterialGroup, RequirementTracking, Requisitioner,
+                 MaterialGroup, RequirementTracking, Requisitioner, Department,
                  CreatedBy, CreatedDate)
                 VALUES
                 (@SERIAL, @Plant, @Detail_Model, @Type, @Cost, @IO, @GL,
                  @BaseUnit, @PurchasingOrganization, @PurchasingGroup,
-                 @MaterialGroup, @RequirementTracking, @Requisitioner,
+                 @MaterialGroup, @RequirementTracking, @Requisitioner, @Department,
                  @CreatedBy, GETDATE())
             `);
 
@@ -552,7 +553,7 @@ app.put('/api/master/update', async (req, res) => {
         const {
             SERIAL, Plant, Detail_Model, Type, Cost, IO, GL,
             BaseUnit, PurchasingOrganization, PurchasingGroup,
-            MaterialGroup, RequirementTracking, Requisitioner, user
+            MaterialGroup, RequirementTracking, Requisitioner, Department, user
         } = req.body;
 
         if (!SERIAL) {
@@ -577,6 +578,7 @@ app.put('/api/master/update', async (req, res) => {
             .input('MaterialGroup', sql.NVarChar, MaterialGroup || '')
             .input('RequirementTracking', sql.NVarChar, RequirementTracking || '')
             .input('Requisitioner', sql.NVarChar, Requisitioner || '')
+            .input('Department', sql.NVarChar, Department || '')
             .input('UpdatedBy', sql.NVarChar, user || 'Unknown')
             .query(`
                 UPDATE Information SET
@@ -592,6 +594,7 @@ app.put('/api/master/update', async (req, res) => {
                     MaterialGroup = @MaterialGroup,
                     RequirementTracking = @RequirementTracking,
                     Requisitioner = @Requisitioner,
+                    Department = @Department,
                     UpdatedBy = @UpdatedBy,
                     UpdatedDate = GETDATE()
                 WHERE SERIAL = @SERIAL
@@ -659,6 +662,193 @@ app.delete('/api/master/delete', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการลบข้อมูล',
+            error: error.message
+        });
+    }
+});
+
+// ==================== ProcessFlow APIs ====================
+
+/**
+ * ดึงรายการ ProcessFlow (Description + WebHook)
+ * GET /api/processflow/list
+ */
+app.get('/api/processflow/list', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT ID, Description, WebHook, Remark
+            FROM ProcessFlow
+            ORDER BY ID
+        `);
+
+        res.json({
+            success: true,
+            total: result.recordset.length,
+            data: result.recordset
+        });
+    } catch (error) {
+        console.error('❌ ProcessFlow list error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึง ProcessFlow',
+            error: error.message
+        });
+    }
+});
+
+// ==================== Department APIs ====================
+
+/**
+ * ดึงรายการ Department ทั้งหมดจากตาราง Information
+ * GET /api/department/list
+ */
+app.get('/api/department/list', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT DISTINCT Department
+            FROM Information
+            WHERE Department IS NOT NULL AND LTRIM(RTRIM(Department)) <> ''
+            ORDER BY Department
+        `);
+
+        res.json({
+            success: true,
+            total: result.recordset.length,
+            data: result.recordset.map(r => r.Department)
+        });
+    } catch (error) {
+        console.error('❌ Department list error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึง Department',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * ดึง Cost, IO, GL (DISTINCT) ของ Department ที่เลือก
+ * GET /api/department/options?department=xxx
+ */
+app.get('/api/department/options', async (req, res) => {
+    try {
+        const { department } = req.query;
+
+        if (!department) {
+            return res.status(400).json({
+                success: false,
+                message: 'กรุณาระบุ Department'
+            });
+        }
+
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('department', sql.NVarChar, department)
+            .query(`
+                SELECT DISTINCT Cost, IO, GL
+                FROM Information
+                WHERE Department = @department
+            `);
+
+        const costSet = new Set();
+        const ioSet = new Set();
+        const glSet = new Set();
+
+        result.recordset.forEach(row => {
+            if (row.Cost) costSet.add(row.Cost);
+            if (row.IO) ioSet.add(row.IO);
+            if (row.GL) glSet.add(row.GL);
+        });
+
+        res.json({
+            success: true,
+            data: {
+                costs: Array.from(costSet).sort(),
+                ios: Array.from(ioSet).sort(),
+                gls: Array.from(glSet).sort()
+            }
+        });
+    } catch (error) {
+        console.error('❌ Department options error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการดึงตัวเลือก',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * ดึงข้อมูลเต็มจาก Department + Cost + IO + GL
+ * POST /api/department/search
+ * Body: { "department": "x", "cost": "y", "io": "z", "gl": "w" }
+ */
+app.post('/api/department/search', async (req, res) => {
+    try {
+        const { department, cost, io, gl } = req.body;
+
+        if (!department || !cost || !io || !gl) {
+            return res.status(400).json({
+                success: false,
+                message: 'กรุณาระบุ Department, Cost, IO และ GL ให้ครบ'
+            });
+        }
+
+        console.log(`🔍 Department search: ${department} / ${cost} / ${io} / ${gl}`);
+
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('department', sql.NVarChar, department)
+            .input('cost', sql.NVarChar, cost)
+            .input('io', sql.NVarChar, io)
+            .input('gl', sql.NVarChar, gl)
+            .query(`
+                SELECT TOP 1
+                    SERIAL, Plant, Detail_Model, Type,
+                    Cost, IO, GL,
+                    BaseUnit, PurchasingOrganization, PurchasingGroup,
+                    MaterialGroup, RequirementTracking, Requisitioner, Department
+                FROM Information
+                WHERE Department = @department
+                  AND Cost = @cost
+                  AND IO = @io
+                  AND GL = @gl
+            `);
+
+        if (result.recordset.length > 0) {
+            const row = result.recordset[0];
+            res.json({
+                success: true,
+                data: {
+                    SERIAL: row.SERIAL || '',
+                    Plant: row.Plant || '',
+                    Detail_Model: row.Detail_Model || '',
+                    Type: row.Type || '',
+                    Department: row.Department || '',
+                    CostCenter: row.Cost || '',
+                    OrderID: row.IO || '',
+                    GLAccount: row.GL || '',
+                    BaseUnit: row.BaseUnit || '',
+                    PurchasingOrganization: row.PurchasingOrganization || '',
+                    PurchasingGroup: row.PurchasingGroup || '',
+                    MaterialGroup: row.MaterialGroup || '',
+                    RequirementTracking: row.RequirementTracking || '',
+                    Requisitioner: row.Requisitioner || ''
+                }
+            });
+        } else {
+            res.json({
+                success: false,
+                message: `ไม่พบข้อมูลที่ตรงกับ Department/Cost/IO/GL ที่เลือก`
+            });
+        }
+    } catch (error) {
+        console.error('❌ Department search error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการค้นหา',
             error: error.message
         });
     }
@@ -740,6 +930,10 @@ app.listen(PORT, () => {
     console.log('║   • POST /api/master/create                ║');
     console.log('║   • PUT  /api/master/update                ║');
     console.log('║   • DEL  /api/master/delete                ║');
+    console.log('║   • GET  /api/processflow/list             ║');
+    console.log('║   • GET  /api/department/list              ║');
+    console.log('║   • GET  /api/department/options           ║');
+    console.log('║   • POST /api/department/search            ║');
     console.log('║   • GET  /api/history                      ║');
     console.log('╚════════════════════════════════════════════╝');
     console.log(`📁 Interface Path: ${INTERFACE_PATH}`);

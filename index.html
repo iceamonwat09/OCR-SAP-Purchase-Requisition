@@ -74,6 +74,71 @@
             border-color: #1e3c72;
         }
 
+        .config-select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            background: #f8f9ff;
+        }
+
+        .config-select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        .mode-section {
+            background: #eef2ff;
+            border: 2px solid #1e3c72;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .dept-search-section {
+            background: #fff8e1;
+            border: 2px solid #ffa000;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .dept-search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .dept-search-grid label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.85em;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .dept-search-grid select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.9em;
+            background: white;
+        }
+
+        .dept-search-grid select:focus {
+            outline: none;
+            border-color: #ffa000;
+        }
+
+        .dept-search-grid select:disabled {
+            background: #f0f0f0;
+            cursor: not-allowed;
+        }
+
         .warning-box {
             background: #fff3cd;
             border: 2px solid #ffc107;
@@ -533,8 +598,10 @@
             <form id="uploadForm">
                 <div class="config-row">
                     <div class="config-group">
-                        <label>🔗 OCR Webhook URL</label>
-                        <input type="text" id="webhookUrl" class="config-input" value="http://172.32.201.106:5678/webhook/7c4fd4bc-c51f-4890-b6ab-86dfad5ce8f9">
+                        <label>🧭 Process Flow</label>
+                        <select id="processFlowSelect" class="config-select">
+                            <option value="">-- กำลังโหลด --</option>
+                        </select>
                     </div>
                     <div class="config-group">
                         <label>🔍 Database API URL</label>
@@ -542,7 +609,48 @@
                     </div>
                 </div>
 
-                
+                <div class="config-row">
+                    <div class="config-group">
+                        <label>🔗 OCR Webhook URL</label>
+                        <input type="text" id="webhookUrl" class="config-input" value="http://172.32.201.106:5678/webhook/7c4fd4bc-c51f-4890-b6ab-86dfad5ce8f9">
+                    </div>
+                    <div class="config-group">
+                        <label>🎯 รูปแบบการดึงข้อมูล</label>
+                        <select id="searchMode" class="config-select">
+                            <option value="serial">ดึงตาม S/N (Serial Number)</option>
+                            <option value="department">ดึงตาม Department</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Department Search Section (shown when mode = department) -->
+                <div class="dept-search-section" id="deptSearchSection">
+                    <div style="font-weight:700; color:#e65100; font-size:1em;">🏢 ค้นหาตาม Department</div>
+                    <div style="color:#8d6e00; font-size:0.85em; margin-top:4px;">เลือกให้ครบทุกช่องเพื่อดึงข้อมูลเติมใน "ค่าเริ่มต้น (Apply ไปทุก Item)"</div>
+                    <div class="dept-search-grid">
+                        <div>
+                            <label>Department <span style="color:#dc3545">*</span></label>
+                            <select id="deptSelect"><option value="">-- เลือก Department --</option></select>
+                        </div>
+                        <div>
+                            <label>Cost Center <span style="color:#dc3545">*</span></label>
+                            <select id="deptCostSelect" disabled><option value="">-- เลือก Cost --</option></select>
+                        </div>
+                        <div>
+                            <label>IO (Order ID) <span style="color:#dc3545">*</span></label>
+                            <select id="deptIOSelect" disabled><option value="">-- เลือก IO --</option></select>
+                        </div>
+                        <div>
+                            <label>GL Account <span style="color:#dc3545">*</span></label>
+                            <select id="deptGLSelect" disabled><option value="">-- เลือก GL --</option></select>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-primary" id="deptLoadBtn" onclick="loadDepartmentData()" style="padding:10px 20px;">📥 ดึงข้อมูล</button>
+                        <div id="deptStatus" class="search-status" style="flex:1; min-width:200px;"></div>
+                    </div>
+                </div>
+
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📄</div>
                     <div class="upload-text">คลิกเพื่อเลือกไฟล์ PDF Invoice</div>
@@ -745,6 +853,7 @@
         let selectedFiles = [];
         let processedResults = [];
         let currentIndex = 0;
+        let processFlows = [];
 
         // ==================== DOM Elements ====================
         const uploadArea = document.getElementById('uploadArea');
@@ -1256,6 +1365,242 @@
 
         function navigatePrev() { if (currentIndex > 0) { currentIndex--; displaySAPConfig(); } }
         function navigateNext() { if (currentIndex < processedResults.length - 1) { currentIndex++; displaySAPConfig(); } }
+
+        // ==================== ProcessFlow Functions ====================
+        async function loadProcessFlows() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const select = document.getElementById('processFlowSelect');
+
+            try {
+                const response = await fetch(`${apiUrl}/processflow/list`);
+                const result = await response.json();
+
+                if (result.success && Array.isArray(result.data)) {
+                    processFlows = result.data;
+                    let html = '<option value="">-- เลือก Process --</option>';
+                    processFlows.forEach(pf => {
+                        html += `<option value="${pf.ID}">${escapeHtmlAttr(pf.Description || '')}</option>`;
+                    });
+                    select.innerHTML = html;
+                } else {
+                    select.innerHTML = '<option value="">-- ไม่พบข้อมูล --</option>';
+                }
+            } catch (error) {
+                console.error('Load ProcessFlow error:', error);
+                select.innerHTML = '<option value="">-- โหลดไม่สำเร็จ --</option>';
+            }
+        }
+
+        function onProcessFlowChange() {
+            const select = document.getElementById('processFlowSelect');
+            const id = select.value;
+            if (!id) return;
+            const pf = processFlows.find(p => String(p.ID) === String(id));
+            if (pf && pf.WebHook) {
+                document.getElementById('webhookUrl').value = pf.WebHook;
+            }
+        }
+
+        function escapeHtmlAttr(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // ==================== Department Search Functions ====================
+        function onSearchModeChange() {
+            const mode = document.getElementById('searchMode').value;
+            const deptSection = document.getElementById('deptSearchSection');
+            if (mode === 'department') {
+                deptSection.style.display = 'block';
+                loadDepartments();
+            } else {
+                deptSection.style.display = 'none';
+            }
+        }
+
+        async function loadDepartments() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const select = document.getElementById('deptSelect');
+            select.innerHTML = '<option value="">-- กำลังโหลด --</option>';
+
+            try {
+                const response = await fetch(`${apiUrl}/department/list`);
+                const result = await response.json();
+
+                if (result.success && Array.isArray(result.data)) {
+                    let html = '<option value="">-- เลือก Department --</option>';
+                    result.data.forEach(d => {
+                        html += `<option value="${escapeHtmlAttr(d)}">${escapeHtmlAttr(d)}</option>`;
+                    });
+                    select.innerHTML = html;
+                } else {
+                    select.innerHTML = '<option value="">-- ไม่พบข้อมูล --</option>';
+                }
+            } catch (error) {
+                console.error('Load Department error:', error);
+                select.innerHTML = '<option value="">-- โหลดไม่สำเร็จ --</option>';
+            }
+        }
+
+        async function onDepartmentChange() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const dept = document.getElementById('deptSelect').value;
+            const costSel = document.getElementById('deptCostSelect');
+            const ioSel = document.getElementById('deptIOSelect');
+            const glSel = document.getElementById('deptGLSelect');
+
+            // reset child selects
+            costSel.innerHTML = '<option value="">-- เลือก Cost --</option>';
+            ioSel.innerHTML = '<option value="">-- เลือก IO --</option>';
+            glSel.innerHTML = '<option value="">-- เลือก GL --</option>';
+            costSel.disabled = true;
+            ioSel.disabled = true;
+            glSel.disabled = true;
+
+            if (!dept) return;
+
+            try {
+                const response = await fetch(`${apiUrl}/department/options?department=${encodeURIComponent(dept)}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    (result.data.costs || []).forEach(v => costSel.innerHTML += `<option value="${escapeHtmlAttr(v)}">${escapeHtmlAttr(v)}</option>`);
+                    (result.data.ios || []).forEach(v => ioSel.innerHTML += `<option value="${escapeHtmlAttr(v)}">${escapeHtmlAttr(v)}</option>`);
+                    (result.data.gls || []).forEach(v => glSel.innerHTML += `<option value="${escapeHtmlAttr(v)}">${escapeHtmlAttr(v)}</option>`);
+                    costSel.disabled = false;
+                    ioSel.disabled = false;
+                    glSel.disabled = false;
+                }
+            } catch (error) {
+                console.error('Load dept options error:', error);
+            }
+        }
+
+        async function loadDepartmentData() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const dept = document.getElementById('deptSelect').value;
+            const cost = document.getElementById('deptCostSelect').value;
+            const io = document.getElementById('deptIOSelect').value;
+            const gl = document.getElementById('deptGLSelect').value;
+            const status = document.getElementById('deptStatus');
+            const btn = document.getElementById('deptLoadBtn');
+
+            if (!dept || !cost || !io || !gl) {
+                status.className = 'search-status error';
+                status.textContent = '❌ กรุณาเลือกให้ครบทั้ง 4 ช่อง (Department / Cost / IO / GL)';
+                return;
+            }
+
+            btn.disabled = true;
+            status.className = 'search-status loading';
+            status.textContent = '🔄 กำลังดึงข้อมูล...';
+
+            try {
+                const response = await fetch(`${apiUrl}/department/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ department: dept, cost, io, gl })
+                });
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    applyDeptDataToDefaults(result.data);
+                    sapConfigSection.style.display = 'block';
+                    ensureDeptItemCard(result.data);
+                    sapConfigSection.scrollIntoView({ behavior: 'smooth' });
+                    status.className = 'search-status success';
+                    status.textContent = '✅ เติมข้อมูลใน "ค่าเริ่มต้น" เรียบร้อย - กดปุ่ม "ใช้ค่าเริ่มต้น" เพื่อนำไปใช้กับทุก Item';
+                } else {
+                    status.className = 'search-status error';
+                    status.textContent = `❌ ${result.message || 'ไม่พบข้อมูล'}`;
+                }
+            } catch (error) {
+                status.className = 'search-status error';
+                status.textContent = `❌ ดึงข้อมูลไม่สำเร็จ: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function applyDeptDataToDefaults(data) {
+            const map = {
+                'defaultPlant': data.Plant,
+                'defaultPurchOrg': data.PurchasingOrganization,
+                'defaultPurchGroup': data.PurchasingGroup,
+                'defaultMatGroup': data.MaterialGroup,
+                'defaultBaseUnit': data.BaseUnit,
+                'defaultReqTracking': data.RequirementTracking,
+                'defaultRequisitioner': data.Requisitioner,
+                'defaultGLAccount': data.GLAccount,
+                'defaultCostCenter': data.CostCenter,
+                'defaultOrderID': data.OrderID
+            };
+            for (const [id, val] of Object.entries(map)) {
+                if (val) document.getElementById(id).value = val;
+            }
+        }
+
+        function ensureDeptItemCard(data) {
+            // สร้าง item card ว่าง 1 รายการ ถ้ายังไม่มี items เพื่อให้ "ใช้ค่าเริ่มต้น" มีที่ apply ลง
+            const container = document.getElementById('itemsContainer');
+            if (container.querySelector('.item-card')) return;
+
+            const html = `
+            <div class="item-card" data-index="0" data-serial="">
+                <div class="item-card-header">
+                    <span class="item-number">#1</span>
+                    <span class="item-description">-</span>
+                </div>
+                <div class="item-form-grid">
+                    <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value=""></div>
+                    <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value=""></div>
+                    <div class="item-form-group"><label>Acct Cat</label>
+                        <select class="item-acct-cat">
+                            <option value="Y">Y</option>
+                            <option value="K">K</option>
+                            <option value="F">F</option>
+                        </select>
+                    </div>
+                    <div class="item-form-group"><label>Quantity</label><input type="text" class="item-qty" value=""></div>
+                    <div class="item-form-group"><label>Base Unit</label><input type="text" class="item-base-unit" value=""></div>
+                    <div class="item-form-group"><label>Purch Org</label><input type="text" class="item-purch-org" value=""></div>
+                    <div class="item-form-group"><label>Purch Group</label><input type="text" class="item-purch-group" value=""></div>
+                    <div class="item-form-group"><label>Mat Group</label><input type="text" class="item-mat-group" value=""></div>
+                    <div class="item-form-group"><label>Price</label><input type="text" class="item-price" value=""></div>
+                    <div class="item-form-group"><label>Currency</label><input type="text" class="item-currency" value="THB" readonly style="background:#f5f5f5"></div>
+                    <div class="item-form-group"><label>Inv</label><input type="text" class="item-inv" value=""></div>
+                    <div class="item-form-group"><label>Req Track</label><input type="text" class="item-req-tracking" value=""></div>
+                    <div class="item-form-group"><label>Requisitioner</label><input type="text" class="item-requisitioner" value=""></div>
+                    <div class="item-form-group"><label>Delivery Date</label><input type="date" class="item-delivery-date" value=""><div class="date-display">📅 -</div></div>
+                </div>
+                <div class="acct-assignment-section">
+                    <div class="acct-assignment-title">💰 Account Assignment</div>
+                    <div class="item-form-grid">
+                        <div class="item-form-group"><label>GL Account</label><input type="text" class="item-gl-account" value=""></div>
+                        <div class="item-form-group"><label>Cost Center</label><input type="text" class="item-cost-center" value=""></div>
+                        <div class="item-form-group"><label>Order ID</label><input type="text" class="item-order-id" value=""></div>
+                    </div>
+                </div>
+                <div class="item-amount-box" style="margin-top:10px; padding:10px 15px; background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border:1px solid #66bb6a; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:600; color:#2e7d32; font-size:0.9em;">Amount (Price x Qty)</span>
+                    <span class="item-amount-value" style="font-weight:700; color:#1b5e20; font-size:1.1em;">0.00</span>
+                </div>
+            </div>`;
+            container.innerHTML = html;
+            document.getElementById('itemCount').textContent = '1';
+
+            // Bind recalc listener
+            container.querySelectorAll('.item-price, .item-qty').forEach(input => {
+                input.addEventListener('input', recalcAllAmounts);
+            });
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProcessFlows();
+            document.getElementById('processFlowSelect').addEventListener('change', onProcessFlowChange);
+            document.getElementById('searchMode').addEventListener('change', onSearchModeChange);
+            document.getElementById('deptSelect').addEventListener('change', onDepartmentChange);
+        });
 
         // ==================== Send to Interface Functions ====================
         
