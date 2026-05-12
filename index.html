@@ -440,6 +440,19 @@
 
         .btn-delete-item:hover { background: #c62828; }
 
+        .btn-add-item {
+            background: white;
+            color: #1e3c72;
+            border: 2px solid white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 700;
+        }
+
+        .btn-add-item:hover { background: #e3eaff; }
+
         .item-form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -775,7 +788,10 @@
 
             <!-- Items -->
             <div class="items-section">
-                <div class="items-header">📦 รายการ Items (<span id="itemCount">0</span>)</div>
+                <div class="items-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span>📦 รายการ Items (<span id="itemCount">0</span>)</span>
+                    <button type="button" class="btn-add-item" onclick="addNewItem()">➕ เพิ่ม Item</button>
+                </div>
                 <div class="items-container" id="itemsContainer"></div>
             </div>
 
@@ -938,6 +954,121 @@
             });
             const totalEl = document.getElementById('summaryTotalValue');
             if (totalEl) totalEl.textContent = formatNumber(total);
+        }
+
+        // ==================== Serial Input Sync ====================
+        // ทำให้ S/N input ใน item card ทุกอันอัพเดท card.dataset.serial + badge
+        function bindSerialInput(card) {
+            const input = card.querySelector('.item-serial-input');
+            if (!input || input.dataset.bound === '1') return;
+            input.dataset.bound = '1';
+            input.addEventListener('input', () => {
+                const val = input.value.trim();
+                card.dataset.serial = val;
+                let badge = card.querySelector('.item-serial');
+                if (val) {
+                    if (badge) {
+                        badge.textContent = `S/N: ${val}`;
+                        badge.style.display = '';
+                    } else {
+                        const header = card.querySelector('.item-card-header');
+                        const deleteBtn = header && header.querySelector('.btn-delete-item');
+                        const newBadge = document.createElement('span');
+                        newBadge.className = 'item-serial';
+                        newBadge.textContent = `S/N: ${val}`;
+                        if (header && deleteBtn) header.insertBefore(newBadge, deleteBtn);
+                        else if (header) header.appendChild(newBadge);
+                    }
+                } else if (badge) {
+                    badge.style.display = 'none';
+                }
+            });
+        }
+
+        // ==================== Add New Item (manual) ====================
+        function buildEmptyItemCardHTML(idx) {
+            return `
+            <div class="item-card" data-index="${idx}" data-serial="">
+                <div class="item-card-header">
+                    <span class="item-number">#${idx + 1}</span>
+                    <span class="item-description">รายการที่เพิ่มเอง</span>
+                    <button type="button" class="btn-delete-item" onclick="deleteItem(this)">🗑️ ลบ</button>
+                </div>
+                <div class="item-form-grid">
+                    <div class="item-form-group"><label>S/N (สำหรับค้นหา DB)</label><input type="text" class="item-serial-input" value="" placeholder="พิมพ์ S/N"></div>
+                    <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value=""></div>
+                    <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value=""></div>
+                    <div class="item-form-group"><label>Acct Cat</label>
+                        <select class="item-acct-cat">
+                            <option value="Y">Y</option>
+                            <option value="K">K</option>
+                            <option value="F">F</option>
+                        </select>
+                    </div>
+                    <div class="item-form-group"><label>Quantity</label><input type="text" class="item-qty" value=""></div>
+                    <div class="item-form-group"><label>Base Unit</label><input type="text" class="item-base-unit" value=""></div>
+                    <div class="item-form-group"><label>Purch Org</label><input type="text" class="item-purch-org" value=""></div>
+                    <div class="item-form-group"><label>Purch Group</label><input type="text" class="item-purch-group" value=""></div>
+                    <div class="item-form-group"><label>Mat Group</label><input type="text" class="item-mat-group" value=""></div>
+                    <div class="item-form-group"><label>Price</label><input type="text" class="item-price" value=""></div>
+                    <div class="item-form-group"><label>Currency</label><input type="text" class="item-currency" value="THB" readonly style="background:#f5f5f5"></div>
+                    <div class="item-form-group"><label>Inv</label><input type="text" class="item-inv" value=""></div>
+                    <div class="item-form-group"><label>Req Track</label><input type="text" class="item-req-tracking" value=""></div>
+                    <div class="item-form-group"><label>Requisitioner</label><input type="text" class="item-requisitioner" value=""></div>
+                    <div class="item-form-group"><label>Delivery Date</label><input type="date" class="item-delivery-date" value=""><div class="date-display">📅 -</div></div>
+                </div>
+                <div class="acct-assignment-section">
+                    <div class="acct-assignment-title">💰 Account Assignment</div>
+                    <div class="item-form-grid">
+                        <div class="item-form-group"><label>GL Account</label><input type="text" class="item-gl-account" value=""></div>
+                        <div class="item-form-group"><label>Cost Center</label><input type="text" class="item-cost-center" value=""></div>
+                        <div class="item-form-group"><label>Order ID</label><input type="text" class="item-order-id" value=""></div>
+                    </div>
+                </div>
+                <div class="item-amount-box" style="margin-top:10px; padding:10px 15px; background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border:1px solid #66bb6a; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:600; color:#2e7d32; font-size:0.9em;">Amount (Price x Qty)</span>
+                    <span class="item-amount-value" style="font-weight:700; color:#1b5e20; font-size:1.1em;">0.00</span>
+                </div>
+            </div>`;
+        }
+
+        function addNewItem() {
+            const container = document.getElementById('itemsContainer');
+
+            // ถ้าเป็น placeholder text ("ไม่มี Items") ให้เคลียร์ก่อน
+            if (!container.querySelector('.item-card')) {
+                container.innerHTML = '';
+            }
+
+            const newIdx = container.querySelectorAll('.item-card').length;
+
+            // 1. Push empty entry เข้า memory (เพื่อ sync CSV / navigation)
+            const result = processedResults[currentIndex];
+            if (result && result.invoice) {
+                if (!Array.isArray(result.invoice.to_PurchaseReqnItem)) {
+                    result.invoice.to_PurchaseReqnItem = [];
+                }
+                result.invoice.to_PurchaseReqnItem.push({
+                    Plant: '', PurchaseRequisitionItemText: '', AccountAssignmentCategory: 'Y',
+                    RequestedQuantity: '', BaseUnit: '', PurchasingOrganization: '',
+                    PurchasingGroup: '', MaterialGroup: '', PurchaseRequisitionPrice: '',
+                    PurReqnItemCurrency: 'THB', RequirementTracking: '', RequisitionerName: '',
+                    DeliveryDate: '', to_PurchaseReqnAcctAssgmt: [{ GLAccount: '', CostCenter: '', OrderID: '' }]
+                });
+            }
+
+            // 2. Append DOM card
+            container.insertAdjacentHTML('beforeend', buildEmptyItemCardHTML(newIdx));
+            const newCard = container.lastElementChild;
+
+            // 3. Bind listeners
+            newCard.querySelectorAll('.item-price, .item-qty').forEach(i => i.addEventListener('input', recalcAllAmounts));
+            bindSerialInput(newCard);
+
+            // 4. Update count + recalc + scroll
+            document.getElementById('itemCount').textContent = container.querySelectorAll('.item-card').length;
+            recalcAllAmounts();
+            newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         // ==================== Delete Item ====================
@@ -1119,6 +1250,7 @@
                         <button type="button" class="btn-delete-item" onclick="deleteItem(this)">🗑️ ลบ</button>
                     </div>
                     <div class="item-form-grid">
+                        <div class="item-form-group"><label>S/N (สำหรับค้นหา DB)</label><input type="text" class="item-serial-input" value="${serial || ''}" placeholder="พิมพ์ S/N"></div>
                         <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value="${item.Plant || ''}"></div>
                         <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value="${item.PurchaseRequisitionItemText || ''}"></div>
                         <div class="item-form-group"><label>Acct Cat</label>
@@ -1167,6 +1299,11 @@
             // Price/Qty change listener — auto recalculate amounts
             document.querySelectorAll('.item-price, .item-qty').forEach(input => {
                 input.addEventListener('input', recalcAllAmounts);
+            });
+
+            // S/N input listener — sync to data-serial + badge (ใช้ค้นหา DB)
+            document.querySelectorAll('.item-card').forEach(card => {
+                bindSerialInput(card);
             });
 
             // Show Summary Total Box
@@ -1596,6 +1733,7 @@
                     <button type="button" class="btn-delete-item" onclick="deleteItem(this)">🗑️ ลบ</button>
                 </div>
                 <div class="item-form-grid">
+                    <div class="item-form-group"><label>S/N (สำหรับค้นหา DB)</label><input type="text" class="item-serial-input" value="" placeholder="พิมพ์ S/N"></div>
                     <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value=""></div>
                     <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value=""></div>
                     <div class="item-form-group"><label>Acct Cat</label>
@@ -1637,6 +1775,7 @@
             container.querySelectorAll('.item-price, .item-qty').forEach(input => {
                 input.addEventListener('input', recalcAllAmounts);
             });
+            container.querySelectorAll('.item-card').forEach(card => bindSerialInput(card));
         }
 
         // Initialize on load
