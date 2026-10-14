@@ -14,7 +14,7 @@ const PORT = 3001;
 
 // Middleware
 app.use(cors()); // อนุญาต cross-origin requests
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // รองรับ PR ที่มีจำนวน Item มาก (ค่า default 100kb)
 
 // SQL Server Configuration
 const sqlConfig = {
@@ -49,6 +49,14 @@ const path = require('path');
 
 // Network Share Path สำหรับบันทึกไฟล์ JSON
 const INTERFACE_PATH = '\\\\172.32.201.106\\Interface Onedrive$';
+
+// โฟลเดอร์เก็บสำเนา JSON ที่ส่ง Interface (ในโปรเจค แยกโฟลเดอร์ต่อเดือน YYYY-MM)
+// ใช้สำหรับเรียกข้อมูลกลับมาแก้ไขและส่งใหม่จากหน้า Send History
+const ARCHIVE_PATH = path.join(__dirname, 'sent-json');
+
+function toMonthFolder(year, monthIndex) {
+    return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
 
 // ==================== API Endpoints ====================
 
@@ -100,6 +108,18 @@ app.post('/api/save-file', async (req, res) => {
         fs.writeFileSync(filePath, jsonContent, 'utf8');
 
         console.log(`✅ File saved: ${safeFilename}`);
+
+        // เก็บสำเนา JSON ไว้ในโปรเจค (sent-json/YYYY-MM/) สำหรับเรียกกลับมาส่งใหม่
+        try {
+            const now = new Date();
+            const archiveDir = path.join(ARCHIVE_PATH, toMonthFolder(now.getFullYear(), now.getMonth()));
+            fs.mkdirSync(archiveDir, { recursive: true });
+            fs.writeFileSync(path.join(archiveDir, safeFilename), jsonContent, 'utf8');
+            console.log(`🗄️ Archived: ${path.join(archiveDir, safeFilename)}`);
+        } catch (archiveError) {
+            // ไม่ block การส่งไฟล์ ถ้าเก็บสำเนาล้มเหลว
+            console.error('⚠️ Failed to archive JSON:', archiveError.message);
+        }
 
         // บันทึกประวัติ Send Interface ลง Database
         try {
@@ -909,6 +929,104 @@ app.get('/api/history', async (req, res) => {
     }
 });
 
+/**
+ * ดึง JSON ที่เคยส่ง Interface (จาก sent-json/YYYY-MM/) เพื่อนำกลับมาแก้ไขและส่งใหม่
+ * GET /api/history/:id?user=xxx
+ */
+app.get('/api/history/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        const { user } = req.query;
+
+        if (isNaN(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID ไม่ถูกต้อง'
+            });
+        }
+
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query(`
+                SELECT ID, ScanFilename, OutputFilename, CreatedDate, CreatedBy
+                FROM InterfaceHistory
+                WHERE ID = @id
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'ไม่พบประวัติการส่ง'
+            });
+        }
+
+        const row = result.recordset[0];
+
+        // สิทธิ์เดียวกับ /api/history: ถ้าไม่ใช่ System เห็นได้เฉพาะของตัวเอง
+        if (user && user !== 'System' && row.CreatedBy !== user) {
+            return res.status(403).json({
+                success: false,
+                message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลนี้'
+            });
+        }
+
+        const safeFilename = path.basename(row.OutputFilename || '');
+        if (!safeFilename) {
+            return res.status(404).json({
+                success: false,
+                message: 'ไม่พบชื่อไฟล์ในประวัติ'
+            });
+        }
+
+        // หาไฟล์: ลองโฟลเดอร์เดือนตาม CreatedDate ก่อน แล้วค่อยไล่หาทุกโฟลเดอร์
+        // (mssql คืนค่า DATETIME เป็นเวลาท้องถิ่นของ DB ในรูป UTC จึงใช้ getUTC*)
+        const candidates = [];
+        if (row.CreatedDate instanceof Date && !isNaN(row.CreatedDate)) {
+            candidates.push(toMonthFolder(row.CreatedDate.getUTCFullYear(), row.CreatedDate.getUTCMonth()));
+        }
+        if (fs.existsSync(ARCHIVE_PATH)) {
+            fs.readdirSync(ARCHIVE_PATH, { withFileTypes: true })
+                .filter(d => d.isDirectory() && !candidates.includes(d.name))
+                .map(d => d.name)
+                .sort()
+                .reverse()
+                .forEach(name => candidates.push(name));
+        }
+
+        const filePath = candidates
+            .map(folder => path.join(ARCHIVE_PATH, folder, safeFilename))
+            .find(p => fs.existsSync(p));
+
+        if (!filePath) {
+            return res.status(404).json({
+                success: false,
+                message: `ไม่พบไฟล์ ${safeFilename} ที่เก็บไว้ (ข้อมูลที่ส่งก่อนเปิดใช้ฟังก์ชันส่งใหม่จะไม่มีสำเนา)`
+            });
+        }
+
+        const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        console.log(`📂 Resend load: ${filePath} by ${user}`);
+
+        res.json({
+            success: true,
+            data: {
+                id: row.ID,
+                scanFilename: row.ScanFilename || '',
+                outputFilename: row.OutputFilename || '',
+                content: content
+            }
+        });
+    } catch (error) {
+        console.error('❌ History detail error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+            error: error.message
+        });
+    }
+});
+
 // ==================== Start Server ====================
 
 app.listen(PORT, () => {
@@ -935,8 +1053,10 @@ app.listen(PORT, () => {
     console.log('║   • GET  /api/department/options           ║');
     console.log('║   • POST /api/department/search            ║');
     console.log('║   • GET  /api/history                      ║');
+    console.log('║   • GET  /api/history/:id                  ║');
     console.log('╚════════════════════════════════════════════╝');
     console.log(`📁 Interface Path: ${INTERFACE_PATH}`);
+    console.log(`🗄️ Archive Path: ${ARCHIVE_PATH}`);
 });
 
 // Graceful shutdown

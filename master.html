@@ -308,6 +308,9 @@
                 <input type="text" id="searchInput" placeholder="ค้นหา..." style="min-width: 250px;" onkeydown="if(event.key==='Enter') searchMaster()">
                 <button class="btn btn-primary" onclick="searchMaster()">ค้นหา</button>
                 <button class="btn btn-secondary" onclick="loadMasterList()">แสดงทั้งหมด</button>
+                <select id="plantFilter" onchange="applyPlantFilter()" title="กรองตาม Plant">
+                    <option value="">ทุก Plant</option>
+                </select>
                 <div style="margin-left: auto;">
                     <button class="btn btn-success" onclick="openCreateModal()">+ เพิ่ม Master</button>
                 </div>
@@ -463,6 +466,8 @@
         const PAGE_SIZE = 50;
         let editMode = false;
         let allData = [];
+        let viewData = [];       // ข้อมูลหลังกรอง Plant (ใช้แบ่งหน้า)
+        let recordBaseText = ''; // ข้อความจำนวนรายการจากการโหลด/ค้นหา
         let currentPage = 1;
 
         // ==================== Load Master Data ====================
@@ -478,9 +483,9 @@
 
                 if (result.success) {
                     allData = result.data;
-                    currentPage = 1;
-                    renderPage();
-                    document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ`;
+                    recordBaseText = `พบ ${result.total} รายการ`;
+                    populatePlantFilter();
+                    applyPlantFilter();
                 } else {
                     throw new Error(result.message);
                 }
@@ -509,9 +514,9 @@
 
                 if (result.success) {
                     allData = result.data;
-                    currentPage = 1;
-                    renderPage();
-                    document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ (ค้นหา: "${q}")`;
+                    recordBaseText = `พบ ${result.total} รายการ (ค้นหา: "${q}")`;
+                    populatePlantFilter();
+                    applyPlantFilter();
                 } else {
                     throw new Error(result.message);
                 }
@@ -520,14 +525,36 @@
             }
         }
 
+        // ==================== Plant Filter ====================
+        // สร้างตัวเลือก Plant จากข้อมูลที่โหลดมา (คงค่าที่เลือกไว้ถ้ายังมีอยู่)
+        function populatePlantFilter() {
+            const sel = document.getElementById('plantFilter');
+            const prev = sel.value;
+            const plants = [...new Set(allData.map(r => (r.Plant || '').trim()).filter(Boolean))].sort();
+            sel.innerHTML = '';
+            sel.appendChild(new Option('ทุก Plant', ''));
+            plants.forEach(p => sel.appendChild(new Option(p, p)));
+            sel.value = plants.includes(prev) ? prev : '';
+        }
+
+        function applyPlantFilter() {
+            const plant = document.getElementById('plantFilter').value;
+            viewData = plant ? allData.filter(r => (r.Plant || '').trim() === plant) : allData;
+            currentPage = 1;
+            renderPage();
+            document.getElementById('recordCount').textContent = plant
+                ? `${recordBaseText} | Plant ${plant}: ${viewData.length} รายการ`
+                : recordBaseText;
+        }
+
         // ==================== Pagination ====================
         function renderPage() {
-            const totalPages = Math.max(1, Math.ceil(allData.length / PAGE_SIZE));
+            const totalPages = Math.max(1, Math.ceil(viewData.length / PAGE_SIZE));
             if (currentPage > totalPages) currentPage = totalPages;
 
             const start = (currentPage - 1) * PAGE_SIZE;
             const end = start + PAGE_SIZE;
-            const pageData = allData.slice(start, end);
+            const pageData = viewData.slice(start, end);
 
             renderTable(pageData, start);
             renderPagination(totalPages);
@@ -564,7 +591,7 @@
         }
 
         function goToPage(page) {
-            const totalPages = Math.max(1, Math.ceil(allData.length / PAGE_SIZE));
+            const totalPages = Math.max(1, Math.ceil(viewData.length / PAGE_SIZE));
             if (page < 1 || page > totalPages) return;
             currentPage = page;
             renderPage();

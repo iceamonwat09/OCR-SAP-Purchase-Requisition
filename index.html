@@ -361,6 +361,33 @@
         }
 
         .form-group input:focus { outline: none; border-color: #1e3c72; }
+
+        .email-input-group {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .form-group .email-input-group input {
+            flex: 1;
+            min-width: 0;
+            border-radius: 6px 0 0 6px;
+        }
+
+        .form-group .email-input-group input.input-error { border-color: #dc3545; background: #fff5f5; }
+
+        .email-suffix {
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            background: #eef2ff;
+            border: 2px solid #e0e0e0;
+            border-left: none;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.85em;
+            color: #1e3c72;
+            font-weight: 600;
+            white-space: nowrap;
+        }
         .form-group input.readonly { background: #f5f5f5; }
 
         /* Items Section */
@@ -701,6 +728,9 @@
                 <div class="file-counter" id="fileCounter">1 / 1</div>
             </div>
 
+            <!-- Resend Banner (แสดงเมื่อเปิดจาก Send History) -->
+            <div id="resendBanner" style="display:none; padding:12px 15px; margin-bottom:15px; background:#fff8e1; border:2px solid #ffa000; border-radius:10px; color:#8d6e00; font-size:0.9em;"></div>
+
             <div class="navigation">
                 <button class="nav-btn" id="prevBtn" onclick="navigatePrev()">← ก่อนหน้า</button>
                 <button class="nav-btn" id="nextBtn" onclick="navigateNext()">ถัดไป →</button>
@@ -738,6 +768,13 @@
                 <div class="form-group">
                     <label>PR Description</label>
                     <input type="text" id="prDescription">
+                </div>
+                <div class="form-group">
+                    <label>Email ผู้ขอ <span class="required">*</span></label>
+                    <div class="email-input-group">
+                        <input type="text" id="requestorEmail" placeholder="ชื่อ.นามสกุล" autocomplete="off">
+                        <span class="email-suffix">@thaiunion.com</span>
+                    </div>
                 </div>
             </div>
 
@@ -1147,6 +1184,7 @@
 
             submitBtn.disabled = true;
             processedResults = [];
+            document.getElementById('resendBanner').style.display = 'none';
             const webhookUrl = document.getElementById('webhookUrl').value;
             const btnText = document.getElementById('btnText');
 
@@ -1237,7 +1275,7 @@
             let html = '';
             items.forEach((item, idx) => {
                 const acct = item.to_PurchaseReqnAcctAssgmt?.[0] || {};
-                const serial = extractSerialNumber(item.PurchaseRequisitionItemText);
+                const serial = item._serial !== undefined ? item._serial : extractSerialNumber(item.PurchaseRequisitionItemText);
                 const dateInput = formatDateForInput(item.DeliveryDate);
                 const dateDisplay = formatDateForDisplay(item.DeliveryDate);
 
@@ -1471,13 +1509,28 @@
         }
 
         // ==================== Collect & Export ====================
+        // อ่าน Email ผู้ขอจากช่องกรอก (กรอกเฉพาะส่วนหน้า @thaiunion.com)
+        function getRequestorEmail() {
+            let local = document.getElementById('requestorEmail').value.trim();
+            local = local.replace(/@thaiunion\.com$/i, '');
+            if (!local) return { email: '', error: 'กรุณากรอก Email ผู้ขอ ก่อนส่ง Interface' };
+            if (!/^[A-Za-z0-9._%+-]+$/.test(local)) {
+                return { email: '', error: 'รูปแบบ Email ไม่ถูกต้อง - กรอกเฉพาะส่วนหน้า @thaiunion.com' };
+            }
+            return { email: `${local}@thaiunion.com`, error: '' };
+        }
+
         function collectFormData() {
             const result = processedResults[currentIndex];
-            if (!result?.success) return null;
+            // ไฟล์ OCR ที่ error → ไม่มีข้อมูล / โหมด Department ที่ไม่ได้สแกน PDF → ใช้ item card บนหน้าจอ
+            if (result && !result.success) return null;
+            if (!result && document.querySelectorAll('.item-card').length === 0) return null;
+
+            const requestorEmail = getRequestorEmail().email;
 
             const items = [];
             document.querySelectorAll('.item-card').forEach(card => {
-                items.push({
+                const item = {
                     Plant: card.querySelector('.item-plant').value,
                     PurchaseRequisitionItemText: card.querySelector('.item-text').value,
                     AccountAssignmentCategory: card.querySelector('.item-acct-cat').value,
@@ -1496,7 +1549,15 @@
                         CostCenter: card.querySelector('.item-cost-center').value,
                         OrderID: card.querySelector('.item-order-id').value
                     }]
-                });
+                };
+                if (requestorEmail) {
+                    item.to_PurchaseReqnItemText = [{
+                        DocumentText: 'B06',
+                        Language: 'EN',
+                        NoteDescription: `Email : ${requestorEmail}`
+                    }];
+                }
+                items.push(item);
             });
 
             return {
@@ -1529,12 +1590,36 @@
             link.click();
         }
 
+        // \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e04\u0e48\u0e32\u0e17\u0e35\u0e48\u0e41\u0e01\u0e49\u0e1a\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e08\u0e2d (\u0e44\u0e1f\u0e25\u0e4c\u0e1b\u0e31\u0e08\u0e08\u0e38\u0e1a\u0e31\u0e19) \u0e01\u0e25\u0e31\u0e1a\u0e40\u0e02\u0e49\u0e32 processedResults
+        // \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e43\u0e2b\u0e49 CSV \u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19\u0e44\u0e1f\u0e25\u0e4c (\u0e01\u0e48\u0e2d\u0e19\u0e2b\u0e19\u0e49\u0e32/\u0e16\u0e31\u0e14\u0e44\u0e1b) \u0e15\u0e23\u0e07\u0e01\u0e31\u0e1a\u0e17\u0e35\u0e48\u0e1c\u0e39\u0e49\u0e43\u0e0a\u0e49\u0e41\u0e01\u0e49
+        function syncCurrentToMemory() {
+            const result = processedResults[currentIndex];
+            if (!result || !result.success || !result.invoice) return;
+            const data = collectFormData();
+            if (!data) return;
+            const cards = document.querySelectorAll('.item-card');
+            data.to_PurchaseReqnItem.forEach((item, i) => {
+                // \u0e40\u0e01\u0e47\u0e1a S/N \u0e17\u0e35\u0e48\u0e1c\u0e39\u0e49\u0e43\u0e0a\u0e49\u0e01\u0e23\u0e2d\u0e01\u0e44\u0e27\u0e49\u0e43\u0e19 memory \u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 (\u0e44\u0e21\u0e48\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19 JSON \u0e17\u0e35\u0e48\u0e2a\u0e48\u0e07)
+                if (cards[i]) item._serial = cards[i].dataset.serial || '';
+            });
+            result.invoice.PurchaseRequisitionType = data.PurchaseRequisitionType;
+            result.invoice.PurReqnDescription = data.PurReqnDescription;
+            result.invoice.to_PurchaseReqnItem = data.to_PurchaseReqnItem;
+        }
+
         function exportAllToCSV() {
+            syncCurrentToMemory();
+            let sources = processedResults.filter(r => r.success).map(r => r.invoice);
+            // \u0e42\u0e2b\u0e21\u0e14 Department \u0e17\u0e35\u0e48\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49\u0e2a\u0e41\u0e01\u0e19 PDF \u2192 \u0e43\u0e0a\u0e49\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e1a\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e08\u0e2d
+            if (processedResults.length === 0) {
+                const data = collectFormData();
+                if (data) sources = [data];
+            }
             let csv = '\ufeffPR Type,Description,Plant,Item Text,Qty,BaseUnit,Price,Purch Org,Purch Group,Mat Group,Req Track,Requisitioner,Delivery Date,GL,Cost Center,Order ID\n';
-            processedResults.filter(r => r.success).forEach(r => {
-                (r.invoice.to_PurchaseReqnItem || []).forEach(item => {
+            sources.forEach(invoice => {
+                (invoice.to_PurchaseReqnItem || []).forEach(item => {
                     const a = item.to_PurchaseReqnAcctAssgmt?.[0] || {};
-                    csv += `"${r.invoice.PurchaseRequisitionType||''}","${r.invoice.PurReqnDescription||''}","${item.Plant||''}","${item.PurchaseRequisitionItemText||''}","${item.RequestedQuantity||''}","${item.BaseUnit||''}","${item.PurchaseRequisitionPrice||''}","${item.PurchasingOrganization||''}","${item.PurchasingGroup||''}","${item.MaterialGroup||''}","${item.RequirementTracking||''}","${item.RequisitionerName||''}","${formatDateForDisplay(item.DeliveryDate)}","${a.GLAccount||''}","${a.CostCenter||''}","${a.OrderID||''}"\n`;
+                    csv += `"${invoice.PurchaseRequisitionType||''}","${invoice.PurReqnDescription||''}","${item.Plant||''}","${item.PurchaseRequisitionItemText||''}","${item.RequestedQuantity||''}","${item.BaseUnit||''}","${item.PurchaseRequisitionPrice||''}","${item.PurchasingOrganization||''}","${item.PurchasingGroup||''}","${item.MaterialGroup||''}","${item.RequirementTracking||''}","${item.RequisitionerName||''}","${formatDateForDisplay(item.DeliveryDate)}","${a.GLAccount||''}","${a.CostCenter||''}","${a.OrderID||''}"\n`;
                 });
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1544,8 +1629,8 @@
             link.click();
         }
 
-        function navigatePrev() { if (currentIndex > 0) { currentIndex--; displaySAPConfig(); } }
-        function navigateNext() { if (currentIndex < processedResults.length - 1) { currentIndex++; displaySAPConfig(); } }
+        function navigatePrev() { if (currentIndex > 0) { syncCurrentToMemory(); currentIndex--; displaySAPConfig(); } }
+        function navigateNext() { if (currentIndex < processedResults.length - 1) { syncCurrentToMemory(); currentIndex++; displaySAPConfig(); } }
 
         // ==================== ProcessFlow Functions ====================
         async function loadProcessFlows() {
@@ -1778,12 +1863,54 @@
             container.querySelectorAll('.item-card').forEach(card => bindSerialInput(card));
         }
 
+        // ==================== Resend from History ====================
+        // เปิดจาก history.html ด้วย index.html?resendId=<ID> → โหลด JSON ที่เคยส่งกลับมาแก้ไข
+        async function loadResendData(id) {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const banner = document.getElementById('resendBanner');
+
+            try {
+                const response = await fetch(`${apiUrl}/history/${encodeURIComponent(id)}?user=${encodeURIComponent(currentUser)}`);
+                const result = await response.json();
+
+                if (!result.success || !result.data || !result.data.content) {
+                    throw new Error(result.message || 'ไม่พบข้อมูล');
+                }
+
+                const content = result.data.content;
+                if (!Array.isArray(content.to_PurchaseReqnItem)) {
+                    throw new Error('รูปแบบไฟล์ JSON ไม่ถูกต้อง');
+                }
+
+                processedResults = [{
+                    filename: result.data.scanFilename || result.data.outputFilename || '',
+                    invoice: content,
+                    success: true
+                }];
+                currentIndex = 0;
+                displaySAPConfig();
+                sapConfigSection.style.display = 'block';
+
+                banner.innerHTML = `<strong>📝 โหลดข้อมูลจากประวัติการส่ง:</strong> ${escapeHtmlAttr(result.data.outputFilename || '')}<br>แก้ไขข้อมูลแล้วกด "Send to Interface" เพื่อส่งใหม่ (ระบบจะสร้างไฟล์ใหม่ ไฟล์เดิมไม่ถูกแก้ไข)`;
+                banner.style.display = 'block';
+                sapConfigSection.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                alert(`❌ ไม่สามารถโหลดข้อมูลเพื่อส่งใหม่: ${error.message}`);
+            }
+        }
+
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             loadProcessFlows();
             document.getElementById('processFlowSelect').addEventListener('change', onProcessFlowChange);
             document.getElementById('searchMode').addEventListener('change', onSearchModeChange);
             document.getElementById('deptSelect').addEventListener('change', onDepartmentChange);
+            document.getElementById('requestorEmail').addEventListener('input', function() {
+                this.classList.remove('input-error');
+            });
+
+            const resendId = new URLSearchParams(window.location.search).get('resendId');
+            if (resendId) loadResendData(resendId);
         });
 
         // ==================== Send to Interface Functions ====================
@@ -1821,6 +1948,19 @@
             if (!data) {
                 status.className = 'search-status error';
                 status.textContent = '❌ ไม่มีข้อมูลให้ส่ง - กรุณาสแกน OCR ก่อน';
+                return;
+            }
+
+            // บังคับกรอก Email ผู้ขอ ก่อนส่ง Interface
+            const emailCheck = getRequestorEmail();
+            if (emailCheck.error) {
+                const emailInput = document.getElementById('requestorEmail');
+                emailInput.classList.add('input-error');
+                status.className = 'search-status error';
+                status.textContent = `❌ ${emailCheck.error}`;
+                alert(`⚠️ ${emailCheck.error}`);
+                emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                emailInput.focus();
                 return;
             }
 

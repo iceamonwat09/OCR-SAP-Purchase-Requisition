@@ -132,6 +132,7 @@
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-primary { background: #1e3c72; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
+        .btn-warning { background: #ff9800; color: white; padding: 5px 12px; font-size: 0.8em; white-space: nowrap; }
 
         .data-table {
             width: 100%;
@@ -241,10 +242,11 @@
                             <th>ชื่อไฟล์ Output (JSON)</th>
                             <th>วันที่-เวลา</th>
                             <th>ผู้ส่ง</th>
+                            <th>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
-                        <tr><td colspan="5" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>
+                        <tr><td colspan="6" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -302,7 +304,7 @@
         // ==================== Load History ====================
         async function loadHistory() {
             const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#999;">กำลังโหลดข้อมูล...</td></tr>';
             document.getElementById('pagination').innerHTML = '';
 
             const startDate = document.getElementById('startDate').value;
@@ -325,7 +327,7 @@
                     throw new Error(result.message);
                 }
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#c62828;">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
             }
         }
 
@@ -385,7 +387,7 @@
 
             if (!data || data.length === 0) {
                 tbody.innerHTML = `
-                    <tr><td colspan="5">
+                    <tr><td colspan="6">
                         <div class="empty-state">
                             <div class="icon">📭</div>
                             <div>ไม่พบประวัติการส่ง Interface</div>
@@ -404,9 +406,16 @@
                         <td>${escapeHtml(row.OutputFilename || '-')}</td>
                         <td>${createdDate}</td>
                         <td>${escapeHtml(row.CreatedBy || '-')}</td>
+                        <td><button class="btn btn-warning" onclick="resendHistory(${Number(row.ID)})">แก้ไข / ส่งใหม่</button></td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        // ==================== Resend ====================
+        // เปิดหน้า OCR Generator พร้อมโหลด JSON ที่เคยส่ง เพื่อแก้ไขและส่งใหม่
+        function resendHistory(id) {
+            window.location.href = `index.html?resendId=${encodeURIComponent(id)}`;
         }
 
         // ==================== Clear Filter ====================
