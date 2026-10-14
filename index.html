@@ -1236,7 +1236,7 @@
             document.getElementById('nextBtn').disabled = currentIndex === processedResults.length - 1;
 
             if (!result.success) {
-                document.getElementById('ocrInfoGrid').innerHTML = `<div style="color:#dc3545">❌ ${result.error}</div>`;
+                document.getElementById('ocrInfoGrid').innerHTML = `<div style="color:#dc3545">❌ ${escapeHtmlAttr(result.error || '')}</div>`;
                 document.getElementById('itemsContainer').innerHTML = '';
                 return;
             }
@@ -1251,9 +1251,9 @@
             });
 
             document.getElementById('ocrInfoGrid').innerHTML = `
-                <div class="ocr-info-item"><span class="ocr-info-label">📁</span><span class="ocr-info-value">${result.filename}</span></div>
-                <div class="ocr-info-item"><span class="ocr-info-label">Type:</span><span class="ocr-info-value">${invoice.PurchaseRequisitionType || 'NB'}</span></div>
-                <div class="ocr-info-item"><span class="ocr-info-label">Desc:</span><span class="ocr-info-value">${invoice.PurReqnDescription || '-'}</span></div>
+                <div class="ocr-info-item"><span class="ocr-info-label">📁</span><span class="ocr-info-value">${escapeHtmlAttr(result.filename || '')}</span></div>
+                <div class="ocr-info-item"><span class="ocr-info-label">Type:</span><span class="ocr-info-value">${escapeHtmlAttr(invoice.PurchaseRequisitionType || 'NB')}</span></div>
+                <div class="ocr-info-item"><span class="ocr-info-label">Desc:</span><span class="ocr-info-value">${escapeHtmlAttr(invoice.PurReqnDescription || '-')}</span></div>
                 <div class="ocr-info-item"><span class="ocr-info-label">Items:</span><span class="ocr-info-value">${items.length}</span></div>
             `;
 
@@ -1280,17 +1280,17 @@
                 const dateDisplay = formatDateForDisplay(item.DeliveryDate);
 
                 html += `
-                <div class="item-card" data-index="${idx}" data-serial="${serial || ''}">
+                <div class="item-card" data-index="${idx}" data-serial="${escapeHtmlAttr(serial || '')}">
                     <div class="item-card-header">
                         <span class="item-number">#${idx + 1}</span>
-                        <span class="item-description">${item.PurchaseRequisitionItemText || '-'}</span>
-                        ${serial ? `<span class="item-serial">S/N: ${serial}</span>` : ''}
+                        <span class="item-description">${escapeHtmlAttr(item.PurchaseRequisitionItemText || '-')}</span>
+                        ${serial ? `<span class="item-serial">S/N: ${escapeHtmlAttr(serial || '')}</span>` : ''}
                         <button type="button" class="btn-delete-item" onclick="deleteItem(this)">🗑️ ลบ</button>
                     </div>
                     <div class="item-form-grid">
-                        <div class="item-form-group"><label>S/N (สำหรับค้นหา DB)</label><input type="text" class="item-serial-input" value="${serial || ''}" placeholder="พิมพ์ S/N"></div>
-                        <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value="${item.Plant || ''}"></div>
-                        <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value="${item.PurchaseRequisitionItemText || ''}"></div>
+                        <div class="item-form-group"><label>S/N (สำหรับค้นหา DB)</label><input type="text" class="item-serial-input" value="${escapeHtmlAttr(serial || '')}" placeholder="พิมพ์ S/N"></div>
+                        <div class="item-form-group"><label>Plant</label><input type="text" class="item-plant" value="${escapeHtmlAttr(item.Plant || '')}"></div>
+                        <div class="item-form-group"><label>Item Text</label><input type="text" class="item-text" value="${escapeHtmlAttr(item.PurchaseRequisitionItemText || '')}"></div>
                         <div class="item-form-group"><label>Acct Cat</label>
                             <select class="item-acct-cat">
                                 <option value="Y" ${item.AccountAssignmentCategory==='Y'?'selected':''}>Y</option>
@@ -1298,24 +1298,24 @@
                                 <option value="F" ${item.AccountAssignmentCategory==='F'?'selected':''}>F</option>
                             </select>
                         </div>
-                        <div class="item-form-group"><label>Quantity</label><input type="text" class="item-qty" value="${item.RequestedQuantity || ''}"></div>
-                        <div class="item-form-group"><label>Base Unit</label><input type="text" class="item-base-unit" value="${item.BaseUnit || ''}"></div>
-                        <div class="item-form-group"><label>Purch Org</label><input type="text" class="item-purch-org" value="${item.PurchasingOrganization || ''}"></div>
-                        <div class="item-form-group"><label>Purch Group</label><input type="text" class="item-purch-group" value="${item.PurchasingGroup || ''}"></div>
-                        <div class="item-form-group"><label>Mat Group</label><input type="text" class="item-mat-group" value="${item.MaterialGroup || ''}"></div>
-                        <div class="item-form-group"><label>Price</label><input type="text" class="item-price" value="${item.PurchaseRequisitionPrice || ''}"></div>
-                        <div class="item-form-group"><label>Currency</label><input type="text" class="item-currency" value="${item.PurReqnItemCurrency || 'THB'}" readonly style="background:#f5f5f5"></div>
+                        <div class="item-form-group"><label>Quantity</label><input type="text" class="item-qty" value="${escapeHtmlAttr(item.RequestedQuantity || '')}"></div>
+                        <div class="item-form-group"><label>Base Unit</label><input type="text" class="item-base-unit" value="${escapeHtmlAttr(item.BaseUnit || '')}"></div>
+                        <div class="item-form-group"><label>Purch Org</label><input type="text" class="item-purch-org" value="${escapeHtmlAttr(item.PurchasingOrganization || '')}"></div>
+                        <div class="item-form-group"><label>Purch Group</label><input type="text" class="item-purch-group" value="${escapeHtmlAttr(item.PurchasingGroup || '')}"></div>
+                        <div class="item-form-group"><label>Mat Group</label><input type="text" class="item-mat-group" value="${escapeHtmlAttr(item.MaterialGroup || '')}"></div>
+                        <div class="item-form-group"><label>Price</label><input type="text" class="item-price" value="${escapeHtmlAttr(item.PurchaseRequisitionPrice || '')}"></div>
+                        <div class="item-form-group"><label>Currency</label><input type="text" class="item-currency" value="${escapeHtmlAttr(item.PurReqnItemCurrency || 'THB')}" readonly style="background:#f5f5f5"></div>
                         <div class="item-form-group"><label>Inv</label><input type="text" class="item-inv" value="" placeholder="จาก OCR"></div>
-                        <div class="item-form-group"><label>Req Track</label><input type="text" class="item-req-tracking" value="${item.RequirementTracking || ''}"></div>
-                        <div class="item-form-group"><label>Requisitioner</label><input type="text" class="item-requisitioner" value="${item.RequisitionerName || ''}"></div>
+                        <div class="item-form-group"><label>Req Track</label><input type="text" class="item-req-tracking" value="${escapeHtmlAttr(item.RequirementTracking || '')}"></div>
+                        <div class="item-form-group"><label>Requisitioner</label><input type="text" class="item-requisitioner" value="${escapeHtmlAttr(item.RequisitionerName || '')}"></div>
                         <div class="item-form-group"><label>Delivery Date</label><input type="date" class="item-delivery-date" value="${dateInput}"><div class="date-display">📅 ${dateDisplay}</div></div>
                     </div>
                     <div class="acct-assignment-section">
                         <div class="acct-assignment-title">💰 Account Assignment</div>
                         <div class="item-form-grid">
-                            <div class="item-form-group"><label>GL Account</label><input type="text" class="item-gl-account" value="${acct.GLAccount || ''}"></div>
-                            <div class="item-form-group"><label>Cost Center</label><input type="text" class="item-cost-center" value="${acct.CostCenter || ''}"></div>
-                            <div class="item-form-group"><label>Order ID</label><input type="text" class="item-order-id" value="${acct.OrderID || ''}"></div>
+                            <div class="item-form-group"><label>GL Account</label><input type="text" class="item-gl-account" value="${escapeHtmlAttr(acct.GLAccount || '')}"></div>
+                            <div class="item-form-group"><label>Cost Center</label><input type="text" class="item-cost-center" value="${escapeHtmlAttr(acct.CostCenter || '')}"></div>
+                            <div class="item-form-group"><label>Order ID</label><input type="text" class="item-order-id" value="${escapeHtmlAttr(acct.OrderID || '')}"></div>
                         </div>
                     </div>
                     <div class="item-amount-box" style="margin-top:10px; padding:10px 15px; background:linear-gradient(135deg,#e8f5e9,#c8e6c9); border:1px solid #66bb6a; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
