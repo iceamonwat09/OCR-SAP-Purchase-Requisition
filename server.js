@@ -964,7 +964,8 @@ app.get('/api/history/:id', async (req, res) => {
         const row = result.recordset[0];
 
         // สิทธิ์เดียวกับ /api/history: ถ้าไม่ใช่ System เห็นได้เฉพาะของตัวเอง
-        if (user && user !== 'System' && row.CreatedBy !== user) {
+        // เทียบแบบไม่สนตัวพิมพ์ ให้ตรงกับ SQL (CreatedBy = @user) ที่ใช้ในหน้ารายการ
+        if (user && user !== 'System' && (row.CreatedBy || '').toLowerCase() !== user.toLowerCase()) {
             return res.status(403).json({
                 success: false,
                 message: 'ไม่มีสิทธิ์เข้าถึงข้อมูลนี้'

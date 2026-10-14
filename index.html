@@ -1522,9 +1522,9 @@
 
         function collectFormData() {
             const result = processedResults[currentIndex];
-            // ไฟล์ OCR ที่ error → ไม่มีข้อมูล / โหมด Department ที่ไม่ได้สแกน PDF → ใช้ item card บนหน้าจอ
-            if (result && !result.success) return null;
-            if (!result && document.querySelectorAll('.item-card').length === 0) return null;
+            // ไม่มีผล OCR ที่สำเร็จ (ไม่ได้สแกน PDF หรือ OCR ล้มเหลว) → ใช้ item card บนหน้าจอถ้ามี
+            const hasCards = document.querySelectorAll('.item-card').length > 0;
+            if (!(result && result.success) && !hasCards) return null;
 
             const requestorEmail = getRequestorEmail().email;
 
@@ -1594,9 +1594,14 @@
         // \u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e43\u0e2b\u0e49 CSV \u0e41\u0e25\u0e30\u0e01\u0e32\u0e23\u0e40\u0e1b\u0e25\u0e35\u0e48\u0e22\u0e19\u0e44\u0e1f\u0e25\u0e4c (\u0e01\u0e48\u0e2d\u0e19\u0e2b\u0e19\u0e49\u0e32/\u0e16\u0e31\u0e14\u0e44\u0e1b) \u0e15\u0e23\u0e07\u0e01\u0e31\u0e1a\u0e17\u0e35\u0e48\u0e1c\u0e39\u0e49\u0e43\u0e0a\u0e49\u0e41\u0e01\u0e49
         function syncCurrentToMemory() {
             const result = processedResults[currentIndex];
-            if (!result || !result.success || !result.invoice) return;
+            if (!result) return;
             const data = collectFormData();
             if (!data) return;
+            // ไฟล์ที่ OCR ล้มเหลวแต่ผู้ใช้เติม Item เอง → เก็บเป็นข้อมูลของไฟล์นั้น
+            if (!result.success || !result.invoice) {
+                result.success = true;
+                result.invoice = {};
+            }
             const cards = document.querySelectorAll('.item-card');
             data.to_PurchaseReqnItem.forEach((item, i) => {
                 // \u0e40\u0e01\u0e47\u0e1a S/N \u0e17\u0e35\u0e48\u0e1c\u0e39\u0e49\u0e43\u0e0a\u0e49\u0e01\u0e23\u0e2d\u0e01\u0e44\u0e27\u0e49\u0e43\u0e19 memory \u0e40\u0e17\u0e48\u0e32\u0e19\u0e31\u0e49\u0e19 (\u0e44\u0e21\u0e48\u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19 JSON \u0e17\u0e35\u0e48\u0e2a\u0e48\u0e07)
@@ -1615,11 +1620,19 @@
                 const data = collectFormData();
                 if (data) sources = [data];
             }
+            // \u0e04\u0e23\u0e2d\u0e1a\u0e04\u0e48\u0e32\u0e14\u0e49\u0e27\u0e22 "..." \u0e41\u0e25\u0e30 escape " \u0e40\u0e1b\u0e47\u0e19 "" \u0e15\u0e32\u0e21\u0e21\u0e32\u0e15\u0e23\u0e10\u0e32\u0e19 CSV
+            const cell = v => `"${String(v || '').replace(/"/g, '""')}"`;
             let csv = '\ufeffPR Type,Description,Plant,Item Text,Qty,BaseUnit,Price,Purch Org,Purch Group,Mat Group,Req Track,Requisitioner,Delivery Date,GL,Cost Center,Order ID\n';
             sources.forEach(invoice => {
                 (invoice.to_PurchaseReqnItem || []).forEach(item => {
                     const a = item.to_PurchaseReqnAcctAssgmt?.[0] || {};
-                    csv += `"${invoice.PurchaseRequisitionType||''}","${invoice.PurReqnDescription||''}","${item.Plant||''}","${item.PurchaseRequisitionItemText||''}","${item.RequestedQuantity||''}","${item.BaseUnit||''}","${item.PurchaseRequisitionPrice||''}","${item.PurchasingOrganization||''}","${item.PurchasingGroup||''}","${item.MaterialGroup||''}","${item.RequirementTracking||''}","${item.RequisitionerName||''}","${formatDateForDisplay(item.DeliveryDate)}","${a.GLAccount||''}","${a.CostCenter||''}","${a.OrderID||''}"\n`;
+                    csv += [
+                        invoice.PurchaseRequisitionType, invoice.PurReqnDescription, item.Plant,
+                        item.PurchaseRequisitionItemText, item.RequestedQuantity, item.BaseUnit,
+                        item.PurchaseRequisitionPrice, item.PurchasingOrganization, item.PurchasingGroup,
+                        item.MaterialGroup, item.RequirementTracking, item.RequisitionerName,
+                        formatDateForDisplay(item.DeliveryDate), a.GLAccount, a.CostCenter, a.OrderID
+                    ].map(cell).join(',') + '\n';
                 });
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

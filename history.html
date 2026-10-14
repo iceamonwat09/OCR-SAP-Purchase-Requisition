@@ -225,6 +225,8 @@
                 <input type="date" id="startDate">
                 <label>วันที่สิ้นสุด:</label>
                 <input type="date" id="endDate">
+                <label>ชื่อไฟล์ Output:</label>
+                <input type="text" id="filenameFilter" placeholder="เช่น SAP_PR_20260326" oninput="applyFilenameFilter()" style="min-width: 220px;">
                 <button class="btn btn-primary" onclick="loadHistory()">ค้นหา</button>
                 <button class="btn btn-secondary" onclick="clearFilter()">ล้างตัวกรอง</button>
             </div>
@@ -299,6 +301,7 @@
         const API_URL = 'http://172.32.201.106:3001/api';
         const PAGE_SIZE = 50;
         let allData = [];
+        let viewData = [];  // ข้อมูลหลังกรองชื่อไฟล์ Output (ใช้แบ่งหน้า)
         let currentPage = 1;
 
         // ==================== Load History ====================
@@ -320,9 +323,7 @@
 
                 if (result.success) {
                     allData = result.data;
-                    currentPage = 1;
-                    renderPage();
-                    document.getElementById('recordCount').textContent = `พบ ${result.total} รายการ`;
+                    applyFilenameFilter();
                 } else {
                     throw new Error(result.message);
                 }
@@ -331,14 +332,26 @@
             }
         }
 
+        // ==================== Filename Filter ====================
+        // กรองชื่อไฟล์ Output (บางส่วนของชื่อ ไม่สนตัวพิมพ์เล็ก/ใหญ่) จากข้อมูลที่โหลดมา
+        function applyFilenameFilter() {
+            const q = document.getElementById('filenameFilter').value.trim().toLowerCase();
+            viewData = q ? allData.filter(r => (r.OutputFilename || '').toLowerCase().includes(q)) : allData;
+            currentPage = 1;
+            renderPage();
+            document.getElementById('recordCount').textContent = q
+                ? `พบ ${viewData.length} รายการ (จากทั้งหมด ${allData.length})`
+                : `พบ ${allData.length} รายการ`;
+        }
+
         // ==================== Pagination ====================
         function renderPage() {
-            const totalPages = Math.max(1, Math.ceil(allData.length / PAGE_SIZE));
+            const totalPages = Math.max(1, Math.ceil(viewData.length / PAGE_SIZE));
             if (currentPage > totalPages) currentPage = totalPages;
 
             const start = (currentPage - 1) * PAGE_SIZE;
             const end = start + PAGE_SIZE;
-            const pageData = allData.slice(start, end);
+            const pageData = viewData.slice(start, end);
 
             renderTable(pageData, start);
             renderPagination(totalPages);
@@ -374,7 +387,7 @@
         }
 
         function goToPage(page) {
-            const totalPages = Math.max(1, Math.ceil(allData.length / PAGE_SIZE));
+            const totalPages = Math.max(1, Math.ceil(viewData.length / PAGE_SIZE));
             if (page < 1 || page > totalPages) return;
             currentPage = page;
             renderPage();
@@ -422,6 +435,7 @@
         function clearFilter() {
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
+            document.getElementById('filenameFilter').value = '';
             loadHistory();
         }
 
