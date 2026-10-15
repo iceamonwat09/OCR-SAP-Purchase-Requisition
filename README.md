@@ -11,14 +11,15 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 ```
  เครื่องผู้ใช้ (เบราว์เซอร์)
    │
-   │ ① เปิดหน้าเว็บ                http://172.40.0.76/...         (IIS)
+   │ ① เปิดหน้าเว็บ                http://172.40.0.76:8080/login.html (IIS เว็บ SAPPR)
    │ ② ส่ง PDF ไป OCR              http://172.40.0.76:5678/webhook/... (N8N)
    │ ③ ค้นหา / บันทึก / ส่งไฟล์       http://172.40.0.76:3001/api       (Node API)
    ▼
  ┌──────────────────── Server 172.40.0.76 ────────────────────┐
- │ IIS :80        → login.html, index.html, master.html,        │
- │                  history.html, auth-config.js                 │
- │ N8N :5678      → workflow OCR (Google Vertex)                 │
+ │ IIS :8080      → เว็บ SAPPR (C:\SAP_AUTOPR\web)               │
+ │                  login/index/master/history.html, auth-config │
+ │ N8N :5678      → workflow OCR (Google Vertex) ใช้ร่วมกับ VisionIQ │
+ │ VisionIQ :8000 → ระบบอื่น (ห้ามแตะ ดูหัวข้อ 11)               │
  │ Node API :3001 → server.js ──┬─► SQL Server (DB)              │
  │                              ├─► โฟลเดอร์ Interface (JSON)     │
  │                              └─► sent-json/YYYY-MM/ (สำเนา)    │
@@ -31,9 +32,9 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | ส่วน | เครื่อง | พอร์ต | หมายเหตุ |
 |---|---|---|---|
 | ฐานข้อมูล SQL Server | 172.32.0.50 (`TUM-OD-DV0-50\SQLEXPRESS`) | 1433 | database `SAP_AUTOPR` |
-| IIS (หน้าเว็บ) | 172.40.0.76 | 80 | Default Web Site |
-| Node API (`server.js`) | 172.40.0.76 | 3001 | Firewall rule "SAP PR API 3001" |
-| N8N | 172.40.0.76 | 5678 | เครื่องผู้ใช้ต้องเข้าถึงพอร์ตนี้ได้ |
+| IIS (หน้าเว็บ) | 172.40.0.76 | 8080 | เว็บ `SAPPR` → `C:\SAP_AUTOPR\web`, Firewall rule "SAP PR WEB 8080" |
+| Node API (`server.js`) | 172.40.0.76 | 3001 | `C:\SAP_AUTOPR\api`, Scheduled Task `SAP_AUTOPR-API`, Firewall rule "SAP PR API 3001" |
+| N8N | 172.40.0.76 | 5678 | ของทีม VisionIQ ใช้ร่วมกัน เครื่องผู้ใช้ต้องเข้าถึงพอร์ตนี้ได้ |
 | โฟลเดอร์ Interface | ตั้งค่าใน `server.js` (`INTERFACE_PATH`) | – | ระบบ SAP Interface อ่านไฟล์ JSON จากที่นี่ |
 
 ---
@@ -42,18 +43,18 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 
 | ไฟล์ | วางที่ | หน้าที่ |
 |---|---|---|
-| `login.html` | IIS | หน้า Login (Microsoft 365 SSO หรือ Guest) |
-| `auth-config.js` | IIS | ค่า Azure AD สำหรับ SSO |
-| `index.html` | IIS | OCR Generator: สแกน PDF, แก้ไข Item, ส่ง Interface |
-| `master.html` | IIS | จัดการ Master Data (ตาราง `Information`) |
-| `history.html` | IIS | ประวัติการส่ง Interface และส่งใหม่ |
-| `server.js` | โฟลเดอร์ API **นอก IIS** | Node.js API (Express) |
+| `login.html` | `C:\SAP_AUTOPR\web` | หน้า Login (Microsoft 365 SSO หรือ Guest) |
+| `auth-config.js` | `C:\SAP_AUTOPR\web` | ค่า Azure AD สำหรับ SSO |
+| `index.html` | `C:\SAP_AUTOPR\web` | OCR Generator: สแกน PDF, แก้ไข Item, ส่ง Interface |
+| `master.html` | `C:\SAP_AUTOPR\web` | จัดการ Master Data (ตาราง `Information`) |
+| `history.html` | `C:\SAP_AUTOPR\web` | ประวัติการส่ง Interface และส่งใหม่ |
+| `server.js` | `C:\SAP_AUTOPR\api` (**นอกโฟลเดอร์เว็บ**) | Node.js API (Express) |
 | `migration.sql` | – | สร้าง/เพิ่มคอลัมน์และตาราง (รันครั้งเดียว รันซ้ำได้) |
 | `update-processflow.sql` | – | (ไม่บังคับ) เปลี่ยน `ProcessFlow.WebHook` ให้ชี้ไป N8N `172.40.0.76` ใช้เฉพาะเมื่อในตารางยังเป็น URL เดิม |
 
 > **ห้ามวาง `server.js` ในโฟลเดอร์เว็บของ IIS** เพราะในไฟล์มีรหัสผ่าน SQL และ IIS จะเปิดให้ดาวน์โหลดไฟล์ `.js` ได้
 
-Package ที่ API ใช้: `express`, `mssql`, `cors` (ติดตั้งด้วย `npm install express mssql cors`)
+Package ที่ API ใช้: `express` 4.x, `mssql`, `cors` ติดตั้งใน `C:\SAP_AUTOPR\api` ด้วย `npm install express@4 mssql cors` (ห้ามใช้ `-g`)
 
 ---
 
@@ -205,13 +206,16 @@ Webhook ของ N8N ที่ใช้อยู่ (ต้องอยู่�
 
 ## 9. ติดตั้งและรัน (สรุป)
 
+ทุกขั้นต้องทำตามข้อตกลงในหัวข้อ 11
+
 1. รัน `migration.sql` บนฐานข้อมูล `SAP_AUTOPR` (ทำแล้ว)
-2. ใส่ข้อมูล `ProcessFlow` ให้ `WebHook` ชี้ไป N8N `172.40.0.76`
-3. วางไฟล์หน้าเว็บ 5 ไฟล์ใน IIS
-4. วาง `server.js` ในโฟลเดอร์ API นอก IIS แล้ว `npm install express mssql cors` และ `node server.js`
-5. เปิด Firewall ขาเข้า 3001 (ทำแล้ว) และ 5678 (ถ้าเครื่องผู้ใช้ยังเข้าไม่ได้)
-6. ตรวจ: `/api/health`, `/api/test-db`, `/api/processflow/list`, `/api/check-share`
-7. Webhook node ใน N8N ต้อง Publish แล้ว และถ้าเบราว์เซอร์ขึ้น CORS error ให้ตั้ง Allowed Origins = `*`
+2. ใส่ข้อมูล `ProcessFlow` ให้ `WebHook` ชี้ไป N8N `172.40.0.76:5678`
+3. **API:** วาง `server.js` ที่ `C:\SAP_AUTOPR\api` แล้ว `npm install express@4 mssql cors` เช็คพอร์ตก่อนรันด้วย `netstat -ano -p TCP | findstr ":3001"`
+4. ตั้ง Scheduled Task ชื่อ **`SAP_AUTOPR-API`** ให้รัน `node server.js` ตอนเครื่องเปิด ใช้บัญชีที่เขียนโฟลเดอร์ Interface ได้
+5. **หน้าเว็บ:** วาง 5 ไฟล์ที่ `C:\SAP_AUTOPR\web` แล้วสร้างเว็บ IIS ชื่อ `SAPPR` binding `*:8080:` (ไม่แตะ Default Web Site และเว็บ VisionIQ)
+6. Firewall: `SAP PR API 3001` (ทำแล้ว) และ `SAP PR WEB 8080` (เพิ่ม rule ใหม่ ห้ามแก้ rule เดิม)
+7. ตรวจ: `/api/health`, `/api/test-db`, `/api/processflow/list`, `/api/check-share` และตรวจว่า VisionIQ (`:8000/artwork_check`) และ N8N ยังปกติ
+8. Webhook node ใน N8N ต้อง Publish แล้ว และถ้าเบราว์เซอร์ขึ้น CORS error ให้ตั้ง Allowed Origins = `*`
 
 ---
 
@@ -221,4 +225,26 @@ Webhook ของ N8N ที่ใช้อยู่ (ต้องอยู่�
 - รหัสผ่าน SQL เขียนอยู่ใน `server.js`
 - ชื่อไฟล์ส่ง Interface ละเอียดถึงวินาที ถ้าส่งในวินาทีเดียวกันไฟล์จะทับกัน
 - ประวัติที่ส่งก่อนเปิดใช้ `sent-json` ไม่มีสำเนา จึงกด "ส่งใหม่" ไม่ได้
-- Node API ต้องรันตลอดเวลา (ยังไม่ได้ตั้งเป็น Windows Service)
+- Node API ต้องรันตลอดเวลา (ใช้ Scheduled Task `SAP_AUTOPR-API`)
+- N8N ใช้ร่วมกับ VisionIQ และไม่ได้เปิดเองหลัง reboot ถ้า N8N หยุด การสแกน OCR จะใช้ไม่ได้
+
+---
+
+## 11. ข้อตกลงการใช้ Server 172.40.0.76 ร่วมกับ VisionIQ และ N8N
+
+Server นี้มีระบบอื่นรันอยู่: **VisionIQ** (python, พอร์ต 8000) และ **N8N** (node, พอร์ต 5678/5679) ห้ามทำให้ทั้งสองระบบได้รับผลกระทบ
+
+**ห้ามเด็ดขาด**
+1. ห้ามใช้ `taskkill /IM node.exe` หรือ `taskkill /IM python.exe` จะปิด N8N หรือ VisionIQ ไปด้วย ถ้าต้องหยุด API ของเรา ใช้ `Stop-ScheduledTask SAP_AUTOPR-API` หรือ `taskkill /PID <pid>` ที่ตรวจแล้วว่าเป็น `server.js` ของเรา
+2. ห้ามแก้หรือลบ Scheduled Task `VisionIQ-Waitress` Task ของเราชื่อ `SAP_AUTOPR-API`
+3. ห้ามใช้พอร์ต 8000, 5678, 5679 สำหรับเปิดบริการของเรา (API ใช้ 3001, หน้าเว็บใช้ 8080) เช็คก่อนใช้ทุกครั้งด้วย `netstat -ano -p TCP | findstr ":<port>"`
+
+**เช็คก่อนทำ**
+4. SQL Server 172.32.0.50: ใช้ database `SAP_AUTOPR` เท่านั้น (VisionIQ ใช้ database `VisionIQ`) ห้ามรัน query หนักหรือค้าง lock นาน
+5. Firewall: ห้ามลบ rule `VisionIQ HTTP 8000` เพิ่ม rule ของเราแยกเท่านั้น
+6. Node/npm: ใช้ Node ที่มีอยู่ ห้ามติดตั้ง Node ใหม่ ใช้ nvm หรือแก้ PATH เพราะ N8N ติดตั้งแบบ npm global ในบัญชี `tuf.operation` ติดตั้ง package เฉพาะใน `C:\SAP_AUTOPR\api` (ห้าม `-g`)
+7. ห้ามเปิด Hyper-V หรือติดตั้ง Docker Desktop โดยไม่แจ้ง
+
+**ทั่วไป**
+8. ไฟล์ทั้งหมดของ SAP PR อยู่ใน `C:\SAP_AUTOPR\` เท่านั้น ห้ามแตะ `C:\VisionIQ\` และเว็บ IIS อื่น (Default Web Site, VisionIQ)
+9. ถ้าต้อง restart เครื่อง ต้องแจ้งทีม VisionIQ ก่อนเสมอ เพราะ N8N ต้องเปิดเองหลัง reboot
