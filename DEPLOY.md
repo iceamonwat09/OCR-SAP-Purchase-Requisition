@@ -302,6 +302,7 @@ foreach ($p in 8080, 3001, 5678) { "Port {0}: {1}" -f $p, (Test-NetConnection 17
 | 6 | Preview | JSON ถูกต้อง |
 | 7 | ไม่กรอก Email แล้วกด Send to Interface | มี popup เตือน |
 | 8 | กรอก Email แล้ว Send to Interface | สำเร็จ และไฟล์ขึ้น SharePoint `SAP/Interface_Outbound` |
+| 8.1 | กด Send to Interface ซ้ำ หรือรีเฟรชหน้าแล้วสแกน PDF เดิมแล้วส่ง | ปุ่มเป็น "✅ ส่งแล้ว" / popup "ส่งไปแล้วเมื่อ …" และไม่มีไฟล์ใหม่ |
 | 9 | เมนู Master Data | แสดงข้อมูล ตัวกรอง Plant ใช้ได้ คอลัมน์ Department แสดง |
 | 10 | เมนู Send History | แสดงรายการ ตัวกรองชื่อไฟล์ใช้ได้ ปุ่ม "แก้ไข / ส่งใหม่" เปิดข้อมูลเดิมได้ |
 

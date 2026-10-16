@@ -1184,6 +1184,7 @@
 
             submitBtn.disabled = true;
             processedResults = [];
+            noFileSentInfo = null;
             document.getElementById('resendBanner').style.display = 'none';
             const webhookUrl = document.getElementById('webhookUrl').value;
             const btnText = document.getElementById('btnText');
@@ -1234,6 +1235,7 @@
             document.getElementById('fileCounter').textContent = `${currentIndex + 1} / ${processedResults.length}`;
             document.getElementById('prevBtn').disabled = currentIndex === 0;
             document.getElementById('nextBtn').disabled = currentIndex === processedResults.length - 1;
+            updateSendButtonState();
 
             if (!result.success) {
                 document.getElementById('ocrInfoGrid').innerHTML = `<div style="color:#dc3545">❌ ${escapeHtmlAttr(result.error || '')}</div>`;
@@ -1783,6 +1785,8 @@
 
                 if (result.success && result.data) {
                     applyDeptDataToDefaults(result.data);
+                    noFileSentInfo = null;   // ดึงข้อมูล Department ชุดใหม่ = PR ใหม่ (กรณีไม่ได้สแกน PDF)
+                    updateSendButtonState();
                     sapConfigSection.style.display = 'block';
                     ensureDeptItemCard(result.data);
                     sapConfigSection.scrollIntoView({ behavior: 'smooth' });
@@ -1898,7 +1902,8 @@
                 processedResults = [{
                     filename: result.data.scanFilename || result.data.outputFilename || '',
                     invoice: content,
-                    success: true
+                    success: true,
+                    resendId: result.data.id   // อนุญาตส่งใหม่ 1 ครั้ง (server ตรวจว่าเป็นประวัติของ PDF เดียวกัน)
                 }];
                 currentIndex = 0;
                 displaySAPConfig();
@@ -1951,12 +1956,65 @@
             }
         }
 
+        // ==================== Duplicate Send Guard ====================
+        // จำว่าไฟล์ (PDF) ที่แสดงอยู่ส่งไปแล้วหรือยัง → ปุ่มเป็น "ส่งแล้ว" กดซ้ำไม่ได้
+        // (server เช็คซ้ำจาก InterfaceHistory อีกชั้น)
+        let noFileSentInfo = null;  // โหมด Department ที่ไม่ได้สแกน PDF
+
+        function getSentInfo() {
+            const r = processedResults[currentIndex];
+            return r ? (r.sentInfo || null) : noFileSentInfo;
+        }
+
+        function setSentInfo(info) {
+            const r = processedResults[currentIndex];
+            if (r) r.sentInfo = info; else noFileSentInfo = info;
+        }
+
+        function formatNowForDisplay() {
+            const d = new Date();
+            const p = n => String(n).padStart(2, '0');
+            return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+        }
+
+        function updateSendButtonState() {
+            const btn = document.getElementById('sendFileBtn');
+            const txt = document.getElementById('sendFileBtnText');
+            const status = document.getElementById('sendFileStatus');
+            const info = getSentInfo();
+            if (info) {
+                btn.disabled = true;
+                btn.style.background = '#9e9e9e';
+                txt.textContent = '✅ ส่งแล้ว';
+                status.className = 'search-status success';
+                status.textContent = `✅ ส่งไฟล์สำเร็จแล้ว: ${info.outputFilename} เมื่อ ${info.sentAt}${info.createdBy ? ' โดย ' + info.createdBy : ''}`;
+                status.dataset.sentMsg = '1';
+            } else {
+                btn.disabled = false;
+                btn.style.background = '#4caf50';
+                txt.textContent = 'Send to Interface';
+                if (status.dataset.sentMsg === '1') {
+                    status.className = 'search-status';
+                    status.textContent = '';
+                    delete status.dataset.sentMsg;
+                }
+            }
+        }
+
         async function sendToInterface() {
             const apiUrl = document.getElementById('apiUrl').value;
             const sendBtn = document.getElementById('sendFileBtn');
             const sendBtnText = document.getElementById('sendFileBtnText');
             const status = document.getElementById('sendFileStatus');
-            
+
+            // กันกดซ้ำ: ไฟล์นี้ส่งไปแล้ว
+            const sentInfo = getSentInfo();
+            if (sentInfo) {
+                updateSendButtonState();
+                alert(`⛔ ไฟล์นี้ส่งไปแล้ว (${sentInfo.outputFilename} เมื่อ ${sentInfo.sentAt}) - ส่งซ้ำไม่ได้\nถ้าต้องการแก้ไขและส่งใหม่ ให้ใช้ปุ่ม "แก้ไข / ส่งใหม่" ในหน้า Send History`);
+                return;
+            }
+
             const data = collectFormData();
             if (!data) {
                 status.className = 'search-status error';
@@ -2003,15 +2061,21 @@
                         filename: filename,
                         content: data,
                         scanFilename: scanFilename,
-                        user: currentUser
+                        user: currentUser,
+                        resendId: (processedResults[currentIndex] && processedResults[currentIndex].resendId) || undefined
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
+                    setSentInfo({ outputFilename: result.filename, sentAt: formatNowForDisplay(), createdBy: currentUser });
                     status.className = 'search-status success';
                     status.textContent = `✅ ${result.message}`;
+                } else if (result.alreadySent && result.data) {
+                    // server พบว่า PDF นี้เคยส่งแล้วใน Send History
+                    setSentInfo({ outputFilename: result.data.outputFilename, sentAt: result.data.sentAt, createdBy: result.data.createdBy });
+                    alert(`⛔ ${result.message}\nส่งซ้ำไม่ได้ - ถ้าต้องการแก้ไขและส่งใหม่ ให้ใช้ปุ่ม "แก้ไข / ส่งใหม่" ในหน้า Send History`);
                 } else {
                     throw new Error(result.message);
                 }
@@ -2019,8 +2083,7 @@
                 status.className = 'search-status error';
                 status.textContent = `❌ ส่งไฟล์ไม่สำเร็จ: ${error.message}`;
             } finally {
-                sendBtn.disabled = false;
-                sendBtnText.textContent = 'Send to Interface';
+                updateSendButtonState();
             }
         }
     </script>

@@ -59,6 +59,13 @@ function toMonthFolder(year, monthIndex) {
     return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
 
+// แสดงเวลา DATETIME จาก DB (mssql คืนเวลาท้องถิ่นของ DB ในรูป UTC จึงใช้ getUTC*) เป็น DD/MM/YYYY HH:mm
+function formatDbDateTime(d) {
+    if (!(d instanceof Date) || isNaN(d)) return '-';
+    const p = n => String(n).padStart(2, '0');
+    return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+}
+
 // ==================== API Endpoints ====================
 
 /**
@@ -76,11 +83,13 @@ app.get('/api/health', (req, res) => {
 /**
  * บันทึกไฟล์ JSON ไปยัง Network Share + บันทึกประวัติลง DB
  * POST /api/save-file
- * Body: { "filename": "SAP_PR_xxx.json", "content": { ... }, "scanFilename": "invoice.pdf", "user": "user@email.com" }
+ * Body: { "filename": "SAP_PR_xxx.json", "content": { ... }, "scanFilename": "invoice.pdf", "user": "user@email.com", "resendId": 123 }
+ * ป้องกันส่งซ้ำ: ถ้า scanFilename เคยมีใน InterfaceHistory แล้ว จะไม่เขียนไฟล์ (ตอบ 409)
+ * ยกเว้นส่งใหม่จากปุ่ม "แก้ไข / ส่งใหม่" (resendId ต้องเป็นประวัติของ PDF เดียวกัน)
  */
 app.post('/api/save-file', async (req, res) => {
     try {
-        const { filename, content, scanFilename, user } = req.body;
+        const { filename, content, scanFilename, user, resendId } = req.body;
 
         if (!filename || !content) {
             return res.status(400).json({
@@ -98,6 +107,60 @@ app.post('/api/save-file', async (req, res) => {
                 success: false,
                 message: 'รองรับเฉพาะไฟล์ .json เท่านั้น'
             });
+        }
+
+        // ป้องกันส่งซ้ำ: PDF เดียวกันเคยส่งแล้วหรือยัง (อ่าน InterfaceHistory อย่างเดียว ไม่แก้ฐานข้อมูล)
+        const scanName = (scanFilename || '').trim();
+        if (scanName) {
+            let previous = null;
+            let isAllowedResend = false;
+            try {
+                const pool = await getPool();
+                const prev = await pool.request()
+                    .input('scanFilename', sql.NVarChar, scanName)
+                    .query(`
+                        SELECT TOP 1 ID, OutputFilename, CreatedDate, CreatedBy
+                        FROM InterfaceHistory
+                        WHERE ScanFilename = @scanFilename
+                        ORDER BY CreatedDate DESC, ID DESC
+                    `);
+                previous = prev.recordset[0] || null;
+
+                const resendIdNum = parseInt(resendId, 10);
+                if (previous && !isNaN(resendIdNum)) {
+                    const rs = await pool.request()
+                        .input('id', sql.Int, resendIdNum)
+                        .query('SELECT ScanFilename FROM InterfaceHistory WHERE ID = @id');
+                    isAllowedResend = rs.recordset.length > 0 &&
+                        (rs.recordset[0].ScanFilename || '').trim().toLowerCase() === scanName.toLowerCase();
+                }
+            } catch (checkError) {
+                // ตรวจไม่ได้ = ไม่ส่ง เพื่อไม่ให้เกิด PR ซ้ำ
+                console.error('❌ Duplicate check failed:', checkError.message);
+                return res.status(503).json({
+                    success: false,
+                    message: 'ไม่สามารถตรวจสอบประวัติการส่งได้ (เชื่อมต่อฐานข้อมูลไม่ได้) - ยังไม่ได้ส่งไฟล์ กรุณาลองใหม่',
+                    error: checkError.message
+                });
+            }
+
+            if (previous && !isAllowedResend) {
+                const sentAt = formatDbDateTime(previous.CreatedDate);
+                console.log(`⛔ Duplicate blocked: ${scanName} (sent as ${previous.OutputFilename} at ${sentAt} by ${previous.CreatedBy})`);
+                return res.status(409).json({
+                    success: false,
+                    alreadySent: true,
+                    message: `ไฟล์ ${scanName} ส่งไปแล้วเมื่อ ${sentAt} โดย ${previous.CreatedBy} (${previous.OutputFilename})`,
+                    data: {
+                        outputFilename: previous.OutputFilename,
+                        sentAt: sentAt,
+                        createdBy: previous.CreatedBy
+                    }
+                });
+            }
+            if (isAllowedResend) {
+                console.log(`🔁 Resend allowed from history ID ${resendId}: ${scanName}`);
+            }
         }
 
         const filePath = path.join(INTERFACE_PATH, safeFilename);

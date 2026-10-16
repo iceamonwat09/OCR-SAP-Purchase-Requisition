@@ -96,7 +96,8 @@ Package ที่ API ใช้: `express` 4.x, `mssql`, `cors` ติดตั�
    - **Preview / Download JSON**: JSON ของไฟล์ที่แสดงอยู่
    - **CSV**: รวมทุกไฟล์ที่สแกนสำเร็จ ใช้ค่าที่แก้บนหน้าจอ
    - **Send to Interface**: ส่ง JSON ไปที่ API → บันทึกไฟล์ `SAP_PR_YYYYMMDD_HHMMSS.json` (เวลาไทย)
-7. **ส่งใหม่จากประวัติ**: เปิดด้วย `index.html?resendId=<ID>` (จากปุ่มในหน้า Send History) โหลด JSON ที่เคยส่งมาให้แก้ แล้ว Send ใหม่ ระบบสร้างไฟล์ใหม่ ไฟล์เดิมไม่ถูกแก้ ต้องกรอก Email ใหม่
+   - **กันส่งซ้ำ**: ไฟล์ PDF ที่ส่งแล้ว ปุ่มจะเป็น "✅ ส่งแล้ว" และกดไม่ได้ server เช็คชื่อ PDF กับ `InterfaceHistory` อีกชั้น (อ่านอย่างเดียว) ถ้าเคยส่งแล้วจะไม่เขียนไฟล์ ใช้ได้ทั้งกรณีรีเฟรชหรือเปิดหลายแท็บ ส่วนโหมด Department ที่ไม่ได้สแกน PDF จะกันในหน้าเว็บจนกว่าจะดึงข้อมูล Department ใหม่
+7. **ส่งใหม่จากประวัติ**: เปิดด้วย `index.html?resendId=<ID>` (จากปุ่มในหน้า Send History) โหลด JSON ที่เคยส่งมาให้แก้ แล้ว Send ใหม่ ระบบสร้างไฟล์ใหม่ ไฟล์เดิมไม่ถูกแก้ ต้องกรอก Email ใหม่ **เป็นทางเดียวที่ส่ง PDF เดิมซ้ำได้** และส่งได้ 1 ครั้งต่อการเปิด
 
 ### 4.2 Master Data (`master.html`)
 - ตาราง `Information` ค้นหาตาม Serial / Cost Center / IO / GL, **กรองตาม Plant**, แบ่งหน้า 50 แถว
@@ -154,7 +155,7 @@ Package ที่ API ใช้: `express` 4.x, `mssql`, `cors` ติดตั�
 | GET | `/check-share` | ทดสอบการเข้าถึงโฟลเดอร์ Interface |
 | POST | `/search-serial` | ค้นหา 1 Serial `{ serial }` |
 | POST | `/search-serials` | ค้นหาหลาย Serial `{ serials: [] }` |
-| POST | `/save-file` | บันทึก JSON ไปโฟลเดอร์ Interface + สำเนา `sent-json/YYYY-MM/` + บันทึก `InterfaceHistory` `{ filename, content, scanFilename, user }` |
+| POST | `/save-file` | บันทึก JSON ไปโฟลเดอร์ Interface + สำเนา `sent-json/YYYY-MM/` + บันทึก `InterfaceHistory` `{ filename, content, scanFilename, user, resendId? }` ถ้า `scanFilename` เคยส่งแล้วตอบ **409** (`alreadySent`) ยกเว้นมี `resendId` ของ PDF เดียวกัน ถ้าเช็คประวัติไม่ได้ (DB ล่ม) ตอบ **503** และไม่ส่ง |
 | GET | `/master/list?user=` | รายการ Master |
 | GET | `/master/search?q=&field=serial\|cost\|io\|gl&user=` | ค้นหา Master |
 | POST | `/master/create` | เพิ่ม Master |
