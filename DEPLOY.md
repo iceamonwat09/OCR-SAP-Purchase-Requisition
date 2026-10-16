@@ -96,7 +96,8 @@ $need = "server.js","index.html","master.html","history.html","login.html","auth
 $missing = $need | Where-Object { -not (Test-Path "$Src\$_") }
 if ($missing) { throw "Source folder is missing: $($missing -join ', ')" }
 if (-not (Select-String -Path "$Src\index.html" -Pattern "172.40.0.76:3001" -Quiet)) { throw "index.html is an old version (API URL is not 172.40.0.76)" }
-if (-not (Select-String -Path "$Src\server.js" -Pattern "ARCHIVE_PATH" -Quiet)) { throw "server.js is an old version" }
+if (-not (Select-String -Path "$Src\server.js" -Pattern "alreadySent" -Quiet)) { throw "server.js is an old version (no duplicate-send guard)" }
+if (-not (Select-String -Path "$Src\server.js" -Pattern "Interface_Outbound" -Quiet)) { throw "server.js is an old version (Interface path not set)" }
 "Source OK: $Src"
 "Node: $NodeExe  $(node -v)"
 ```
