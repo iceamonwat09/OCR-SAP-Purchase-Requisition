@@ -35,7 +35,7 @@
 
 1. **ไฟล์โปรเจคเวอร์ชันล่าสุด** จาก GitHub branch `claude/setup-developer-workflow-R97LD` (ดาวน์โหลด ZIP แล้วแตกไฟล์ไว้ในเครื่อง)
 2. **บัญชี Windows สำหรับรัน API** ที่มีสิทธิ์เขียนโฟลเดอร์ Interface (เช่น `thaiunion\tuf.operation`) และรหัสผ่านของบัญชีนั้น
-3. **path โฟลเดอร์ Interface ใหม่** ถ้ายังไม่มี ติดตั้งได้ แต่ปุ่ม Send to Interface จะยังใช้ไม่ได้ (ดูขั้นที่ 9)
+3. **OneDrive บน server** sign in ด้วยบัญชี `tuf.operation` และมี Shortcut `Digital Team - APAC Cluster #1 - Interface_Outbound` แล้ว (ดูขั้นที่ 9)
 
 > ใช้ **Windows PowerShell แบบ Run as Administrator** ทุกขั้น
 > โค้ดใน PowerShell เขียนเป็นภาษาอังกฤษเพื่อไม่ให้ตัวอักษรเพี้ยน
@@ -180,7 +180,7 @@ Show-Neighbors
 | `test-db` | OK (ถ้า FAIL = ต่อ SQL ไม่ได้ ห้ามไปต่อ) |
 | `processflow/list` | OK และตาราง WebHook ต้องเป็น `http://172.40.0.76:5678/webhook/...` ทั้ง 2 path |
 | `department/list` | OK |
-| `check-share` | **FAIL ได้** ถ้ายังไม่ได้ตั้งโฟลเดอร์ Interface ใหม่ (ขั้นที่ 9) |
+| `check-share` | OK (ถ้า FAIL = ไม่พบโฟลเดอร์ OneDrive Shortcut ดูขั้นที่ 9) |
 
 ถ้า WebHook ใน ProcessFlow ยังไม่ใช่ `172.40.0.76` ให้แก้ด้วย SSMS ก่อน (ดู `update-processflow.sql`)
 
@@ -301,7 +301,7 @@ foreach ($p in 8080, 3001, 5678) { "Port {0}: {1}" -f $p, (Test-NetConnection 17
 | 5 | "ค้นหาและเติมข้อมูล" | Items ที่มี S/N ใน Master ถูกเติมข้อมูล |
 | 6 | Preview | JSON ถูกต้อง |
 | 7 | ไม่กรอก Email แล้วกด Send to Interface | มี popup เตือน |
-| 8 | กรอก Email แล้ว Send to Interface | สำเร็จ (ถ้ายังไม่ทำขั้นที่ 9 จะขึ้นว่าส่งไม่สำเร็จ ถือว่าถูกต้อง) |
+| 8 | กรอก Email แล้ว Send to Interface | สำเร็จ และไฟล์ขึ้น SharePoint `SAP/Interface_Outbound` |
 | 9 | เมนู Master Data | แสดงข้อมูล ตัวกรอง Plant ใช้ได้ คอลัมน์ Department แสดง |
 | 10 | เมนู Send History | แสดงรายการ ตัวกรองชื่อไฟล์ใช้ได้ ปุ่ม "แก้ไข / ส่งใหม่" เปิดข้อมูลเดิมได้ |
 
@@ -313,28 +313,35 @@ Get-Content "$LogDir\api.log" -Tail 30 -Encoding UTF8
 
 ---
 
-## ขั้นที่ 9 — ตั้งค่าโฟลเดอร์ Interface (เมื่อได้ path ใหม่)
+## ขั้นที่ 9 — ตรวจโฟลเดอร์ Interface (OneDrive → SharePoint)
 
-ปัจจุบัน `server.js` บรรทัด `INTERFACE_PATH` ยังชี้ไป `\\172.32.201.106\Interface Onedrive$` ซึ่งเครื่องนี้ต่อไม่ได้
+`server.js` เขียนไฟล์ JSON ไปที่
+`C:\Users\tuf.operation\OneDrive - Thai Union Group\Shortcuts\Digital Team - APAC Cluster #1 - Interface_Outbound`
+ซึ่งเป็น OneDrive Shortcut ของบัญชี `tuf.operation` แล้ว OneDrive จะ sync ขึ้น SharePoint `SAP/Interface_Outbound`
 
-**9.1** ทดสอบสิทธิ์ด้วยบัญชีที่รัน Task (login ด้วยบัญชีนั้น หรือใช้ `runas`):
+> **สำคัญ:** OneDrive sync เฉพาะตอนบัญชี `tuf.operation` login อยู่บน server
+> เมื่อเลิกใช้ Remote Desktop ให้ **ปิดหน้าต่าง (Disconnect)** ห้าม **Sign out** ถ้า sign out ไฟล์จะค้างอยู่ในเครื่อง และขึ้น SharePoint เมื่อ login กลับ (ไฟล์ไม่หาย)
+> หลัง reboot ต้อง login ด้วย `tuf.operation` (ทำอยู่แล้วเพื่อเปิด N8N) แล้วตรวจว่า OneDrive เปิดอยู่
+
+**9.1** ตรวจ OneDrive และโฟลเดอร์:
 ```powershell
-$Iface = "\\SERVER\SHARE"   # EDIT: new Interface path
+$Iface = "C:\Users\tuf.operation\OneDrive - Thai Union Group\Shortcuts\Digital Team - APAC Cluster #1 - Interface_Outbound"
+Get-Process OneDrive -IncludeUserName -ErrorAction SilentlyContinue | Select-Object Id, UserName
 Test-Path $Iface
-Set-Content "$Iface\_sap_autopr_write_test.tmp" "x"; Remove-Item "$Iface\_sap_autopr_write_test.tmp"; "write OK"
+Invoke-RestMethod "http://172.40.0.76:$ApiPort/api/check-share"
+```
+ต้องมี OneDrive ของ `THAIUNION\tuf.operation`, `Test-Path` = True และ `check-share` ได้ `success = True`
+
+**9.2** ทดสอบว่าไฟล์ขึ้น SharePoint ถูกโฟลเดอร์:
+```powershell
+Set-Content "$Iface\_sap_autopr_test.txt" "test from 172.40.0.76"
+```
+เปิด SharePoint `SAP/Interface_Outbound` ภายใน 1–2 นาที ต้องเห็น `_sap_autopr_test.txt` แล้ว**ลบไฟล์ทดสอบ**:
+```powershell
+Remove-Item "$Iface\_sap_autopr_test.txt"
 ```
 
-**9.2** ส่ง path ให้ทีมพัฒนาแก้ใน `server.js` (หรือแก้บรรทัด `const INTERFACE_PATH = ...` เอง โดยใส่ `\` เป็น `\\`) แล้ว deploy `server.js` ใหม่:
-```powershell
-Stop-SapApi
-Copy-Item "$ApiDir\server.js" "$ApiDir\server.js.bak-$(Get-Date -Format yyyyMMdd_HHmmss)"
-Copy-Item "$Src\server.js" $ApiDir -Force
-node --check "$ApiDir\server.js"
-Start-ScheduledTask -TaskName $TaskName; Start-Sleep -Seconds 8
-Invoke-RestMethod "http://172.40.0.76:$ApiPort/api/check-share"
-Show-Neighbors
-```
-`check-share` ต้องได้ `success = True`
+**9.3** ทดสอบจริงจากหน้าเว็บ: Send to Interface 1 ครั้ง แล้วตรวจว่าไฟล์ `SAP_PR_YYYYMMDD_HHMMSS.json` อยู่ใน `$Iface` และขึ้น SharePoint
 
 ---
 
@@ -399,7 +406,8 @@ Show-Neighbors
 | "ทดสอบ API" ไม่ผ่าน | `Get-ScheduledTask SAP_AUTOPR-API`, `api.log`, Firewall `SAP PR API 3001` |
 | `test-db` FAIL | เครือข่ายไป `172.32.0.50:1433`, รหัส `sa` ใน `server.js` |
 | สแกน OCR ไม่ได้ | N8N รันอยู่ไหม (`Show-Neighbors`), พอร์ต 5678 จากเครื่องผู้ใช้, WebHook ใน ProcessFlow, CORS (F12 → Console) |
-| Send to Interface ไม่สำเร็จ | `check-share`, path ใน `server.js`, สิทธิ์ของบัญชีที่รัน Task (ขั้นที่ 9) |
+| Send to Interface ไม่สำเร็จ | `check-share`, โฟลเดอร์ OneDrive Shortcut, สิทธิ์ของบัญชีที่รัน Task (ขั้นที่ 9) |
+| ส่งสำเร็จแต่ไฟล์ไม่ขึ้น SharePoint | OneDrive ของ `tuf.operation` เปิดอยู่ไหม, บัญชีถูก sign out หรือไม่, ไอคอน OneDrive แสดง error sync หรือไม่ |
 | ปุ่ม "แก้ไข / ส่งใหม่" แจ้งไม่พบไฟล์ | รายการที่ส่งก่อน deploy ไม่มีสำเนา หรือโฟลเดอร์ `sent-json` ไม่มีสิทธิ์เขียน |
 | Task หยุดเอง | `api.log` บรรทัดท้าย, `Get-ScheduledTaskInfo SAP_AUTOPR-API` (LastTaskResult) |
 | สร้าง Task ไม่ได้ (Access denied / logon failure) | รหัสผ่านบัญชีถูกไหม และบัญชีต้องมีสิทธิ์ "Log on as a batch job" (ผู้ดูแลระบบตั้งให้ได้) |

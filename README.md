@@ -35,7 +35,7 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | IIS (หน้าเว็บ) | 172.40.0.76 | 8080 | เว็บ `SAPPR` → `C:\SAP_AUTOPR\web`, Firewall rule "SAP PR WEB 8080" |
 | Node API (`server.js`) | 172.40.0.76 | 3001 | `C:\SAP_AUTOPR\api`, Scheduled Task `SAP_AUTOPR-API`, Firewall rule "SAP PR API 3001" |
 | N8N | 172.40.0.76 | 5678 | ของทีม VisionIQ ใช้ร่วมกัน เครื่องผู้ใช้ต้องเข้าถึงพอร์ตนี้ได้ |
-| โฟลเดอร์ Interface | ตั้งค่าใน `server.js` (`INTERFACE_PATH`) | – | ระบบ SAP Interface อ่านไฟล์ JSON จากที่นี่ |
+| โฟลเดอร์ Interface | OneDrive Shortcut ของ `tuf.operation` บน 172.40.0.76 → SharePoint `DigitalTeam-APACCluster1/Shared Documents/SAP/Interface_Outbound` | – | ระบบ SAP Interface อ่านไฟล์ JSON จากที่นี่ |
 
 ---
 
@@ -195,7 +195,7 @@ Webhook ของ N8N ที่ใช้อยู่ (ต้องอยู่�
 |---|---|---|
 | `server.js` | `PORT` | `3001` |
 | `server.js` | `sqlConfig.server` / `database` | `TUM-OD-DV0-50\SQLEXPRESS` / `SAP_AUTOPR` |
-| `server.js` | `INTERFACE_PATH` | `\\172.32.201.106\Interface Onedrive$` (**ค่าของเครื่องเดิม ต้องเปลี่ยน**) |
+| `server.js` | `INTERFACE_PATH` | `C:\Users\tuf.operation\OneDrive - Thai Union Group\Shortcuts\Digital Team - APAC Cluster #1 - Interface_Outbound` (OneDrive Shortcut → SharePoint `SAP/Interface_Outbound`) |
 | `server.js` | `ARCHIVE_PATH` | `<โฟลเดอร์ของ server.js>\sent-json` |
 | `index.html` | ช่อง `apiUrl` | `http://172.40.0.76:3001/api` |
 | `index.html` | ช่อง `webhookUrl` | `http://172.40.0.76:5678/webhook/7c4fd4bc-...` |
@@ -230,6 +230,7 @@ Webhook ของ N8N ที่ใช้อยู่ (ต้องอยู่�
 - ประวัติที่ส่งก่อนเปิดใช้ `sent-json` ไม่มีสำเนา จึงกด "ส่งใหม่" ไม่ได้
 - Node API ต้องรันตลอดเวลา (ใช้ Scheduled Task `SAP_AUTOPR-API`)
 - N8N ใช้ร่วมกับ VisionIQ และไม่ได้เปิดเองหลัง reboot ถ้า N8N หยุด การสแกน OCR จะใช้ไม่ได้
+- ไฟล์ Interface ขึ้น SharePoint ผ่าน OneDrive sync ของบัญชี `tuf.operation` ต้อง login ค้างไว้บน server (Disconnect ได้ ห้าม Sign out) ถ้าไม่ได้ login ไฟล์จะค้างในเครื่องจนกว่าจะ login
 
 ---
 

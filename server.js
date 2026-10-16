@@ -48,7 +48,8 @@ const path = require('path');
 // ==================== Configuration ====================
 
 // Network Share Path สำหรับบันทึกไฟล์ JSON
-const INTERFACE_PATH = '\\\\172.32.201.106\\Interface Onedrive$';
+// โฟลเดอร์ OneDrive Shortcut บน Server 172.40.0.76 (บัญชี tuf.operation) → sync ไป SharePoint SAP/Interface_Outbound
+const INTERFACE_PATH = 'C:\\Users\\tuf.operation\\OneDrive - Thai Union Group\\Shortcuts\\Digital Team - APAC Cluster #1 - Interface_Outbound';
 
 // โฟลเดอร์เก็บสำเนา JSON ที่ส่ง Interface (ในโปรเจค แยกโฟลเดอร์ต่อเดือน YYYY-MM)
 // ใช้สำหรับเรียกข้อมูลกลับมาแก้ไขและส่งใหม่จากหน้า Send History
