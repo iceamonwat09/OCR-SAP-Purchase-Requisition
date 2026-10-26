@@ -20,7 +20,7 @@
 - ❌ ห้ามใช้พอร์ต 8000, 5678, 5679 สำหรับเปิดบริการ
 - ❌ ห้าม `npm install -g`, ติดตั้ง Node ใหม่, nvm หรือแก้ PATH
 - ❌ ห้าม restart เครื่อง (ถ้าจำเป็นต้องแจ้งทีม VisionIQ ก่อน)
-- ✅ หลังทุกขั้นตอน รัน `Show-Neighbors` แล้ว**เทียบกับผล baseline (ขั้นที่ 1)** เพื่อยืนยันว่า VisionIQ และ N8N ยังปกติ ถ้าผิดไปจาก baseline **หยุดทันที** แล้วดูหัวข้อ "ย้อนกลับ"
+- ✅ หลังทุกขั้นตอน รัน `Show-Neighbors` แล้ว**เทียบกับผล baseline (ขั้นที่ 2)** เพื่อยืนยันว่า VisionIQ และ N8N ยังปกติ ถ้าผิดไปจาก baseline **หยุดทันที** แล้วดูหัวข้อ "ย้อนกลับ"
 
 ## สถานะที่ทำไปแล้ว
 
@@ -28,28 +28,52 @@
 |---|---|
 | รัน `migration.sql` บน `SAP_AUTOPR` | ✅ |
 | Firewall `SAP PR API 3001` | ✅ |
-| โฟลเดอร์ `C:\SAP_AUTOPR\api` (มี `package.json`, `node_modules` ที่เป็น Express 5) | ✅ จะติดตั้งใหม่เป็น Express 4 ในขั้นที่ 3 |
+| โฟลเดอร์ `C:\SAP_AUTOPR\api` (มี `package.json`, `node_modules` ที่เป็น Express 5) | ✅ จะติดตั้งใหม่เป็น Express 4 ในขั้นที่ 4 |
 | Workflow N8N 2 ตัว Publish แล้ว | ✅ |
 
 ## ข้อมูลที่ต้องมีก่อนเริ่ม
 
-1. **ไฟล์โปรเจคเวอร์ชันล่าสุด** จาก GitHub branch `claude/setup-developer-workflow-R97LD` (ดาวน์โหลด ZIP แล้วแตกไฟล์ไว้ในเครื่อง)
+1. **ไฟล์โปรเจคเวอร์ชันล่าสุด** จาก GitHub branch `claude/setup-developer-workflow-R97LD` (ดาวน์โหลดและแตกไฟล์ในขั้นที่ 0)
 2. **บัญชี Windows สำหรับรัน API** ที่มีสิทธิ์เขียนโฟลเดอร์ Interface (เช่น `thaiunion\tuf.operation`) และรหัสผ่านของบัญชีนั้น
-3. **โฟลเดอร์ `D:\interface`** และ Power Automate flow (อัปโหลดไป SharePoint หลังไฟล์ถูกสร้าง 5 นาที แล้วย้ายไป `D:\interface\Backup`) พร้อมใช้งาน บัญชีที่รัน API ต้องเขียนโฟลเดอร์นี้ได้ (ดูขั้นที่ 9)
+3. **โฟลเดอร์ `D:\interface`** และ Power Automate flow (อัปโหลดไป SharePoint หลังไฟล์ถูกสร้าง 5 นาที แล้วย้ายไป `D:\interface\Backup`) พร้อมใช้งาน บัญชีที่รัน API ต้องเขียนโฟลเดอร์นี้ได้ (ดูขั้นที่ 10)
 
 > ใช้ **Windows PowerShell แบบ Run as Administrator** ทุกขั้น
 > โค้ดใน PowerShell เขียนเป็นภาษาอังกฤษเพื่อไม่ให้ตัวอักษรเพี้ยน
-> ถ้าเปิดหน้าต่าง PowerShell ใหม่ ต้องรัน **ขั้นที่ 0** ใหม่ทุกครั้ง
+> ถ้าเปิดหน้าต่าง PowerShell ใหม่ ต้องรัน **ขั้นที่ 1** ใหม่ทุกครั้ง
 
 ---
 
-## ขั้นที่ 0 — ตั้งค่าตัวแปรและฟังก์ชันช่วย
+## ขั้นที่ 0 — ดาวน์โหลดและแตกไฟล์โปรเจค
 
-แก้แค่บรรทัด `$Src` ให้เป็นโฟลเดอร์ที่แตกไฟล์จาก GitHub ไว้ (โฟลเดอร์ที่มี `server.js` และ `index.html`)
+**0.1** ดาวน์โหลด ZIP ด้วยเบราว์เซอร์บน server:
+1. เปิด `https://github.com/iceamonwat09/OCR-SAP-Purchase-Requisition/tree/claude/setup-developer-workflow-R97LD`
+2. กด **Code → Download ZIP** (บันทึกไว้ที่โฟลเดอร์ Downloads ตามปกติ)
+
+**0.2** แตกไฟล์ไปที่ `C:\SAP_AUTOPR\_src\<วันเวลา>` (ไม่ทับของเดิม):
+```powershell
+$Zip = Get-ChildItem "$env:USERPROFILE\Downloads" -Filter "OCR-SAP-Purchase-Requisition*.zip" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $Zip) { throw "ZIP not found in $env:USERPROFILE\Downloads" }
+"ZIP : $($Zip.FullName)  ($($Zip.LastWriteTime))"
+$Dest = "C:\SAP_AUTOPR\_src\$(Get-Date -Format yyyyMMdd_HHmmss)"
+New-Item -ItemType Directory $Dest -Force | Out-Null
+Expand-Archive -Path $Zip.FullName -DestinationPath $Dest
+Get-ChildItem $Dest -Recurse -Filter server.js | Select-Object -ExpandProperty DirectoryName
+```
+**ผลที่ต้องได้:** ชื่อไฟล์ ZIP และเวลาที่เพิ่งดาวน์โหลด และ path ของโฟลเดอร์ที่มี `server.js` 1 บรรทัด ถ้าเวลา ZIP ไม่ใช่เวลาที่เพิ่งดาวน์โหลด ให้ลบ ZIP เก่าใน Downloads แล้วทำใหม่
+
+---
+
+## ขั้นที่ 1 — ตั้งค่าตัวแปรและฟังก์ชันช่วย
+
+ไม่ต้องแก้อะไร สคริปต์จะใช้ไฟล์ที่แตกล่าสุดใน `C:\SAP_AUTOPR\_src` เอง
 
 ```powershell
-$Src     = "C:\Users\tuf.operation\Downloads\OCR-SAP-Purchase-Requisition-claude-setup-developer-workflow-R97LD"  # EDIT THIS LINE
 $Root    = "C:\SAP_AUTOPR"
+$Src     = Get-ChildItem "$Root\_src" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1 |
+             ForEach-Object { Get-ChildItem $_.FullName -Recurse -Filter server.js | Select-Object -First 1 } |
+             ForEach-Object { $_.DirectoryName }
+if (-not $Src) { throw "No extracted source under $Root\_src - run step 0 first" }
+$Iface   = "D:\interface"
 $ApiDir  = "$Root\api"
 $WebDir  = "$Root\web"
 $LogDir  = "$Root\logs"
@@ -106,21 +130,22 @@ if (-not (Select-String -Path "$Src\server.js" -Pattern "'D:\\interface'" -Simpl
 
 ---
 
-## ขั้นที่ 1 — บันทึกสถานะก่อนเริ่ม (Baseline)
+## ขั้นที่ 2 — บันทึกสถานะก่อนเริ่ม (Baseline)
 
 ```powershell
 New-Item -ItemType Directory $LogDir -Force | Out-Null
-Show-Neighbors | Tee-Object -FilePath "$LogDir\baseline-$(Get-Date -Format yyyyMMdd_HHmmss).txt"
+& { Show-Neighbors; "Interface folder $Iface exists: $(Test-Path $Iface)" } | Tee-Object -FilePath "$LogDir\baseline-$(Get-Date -Format yyyyMMdd_HHmmss).txt"
 ```
 
 **ผลที่ต้องได้:**
 - Port 8000 = python, Port 5678 = node (N8N)
 - VisionIQ และ N8N = HTTP 200
 - Port 3001 และ 8080 = **free** ถ้าไม่ว่าง **หยุด** แล้วแจ้งผู้ดูแลระบบ อย่าปิดโปรแกรมที่ใช้พอร์ตนั้น
+- `Interface folder D:\interface exists: True`
 
 ---
 
-## ขั้นที่ 2 — ตรวจพอร์ตด้วย netstat (ตามข้อตกลงข้อ 3)
+## ขั้นที่ 3 — ตรวจพอร์ตด้วย netstat (ตามข้อตกลงข้อ 3)
 
 ```powershell
 netstat -ano -p TCP | findstr ":3001 :8080"
@@ -129,7 +154,7 @@ netstat -ano -p TCP | findstr ":3001 :8080"
 
 ---
 
-## ขั้นที่ 3 — ติดตั้ง API
+## ขั้นที่ 4 — ติดตั้ง API
 
 ```powershell
 New-Item -ItemType Directory $ApiDir -Force | Out-Null
@@ -154,16 +179,16 @@ Show-Neighbors
 
 ---
 
-## ขั้นที่ 4 — ทดสอบรัน API ด้วยมือ (ยังไม่ตั้ง Task)
+## ขั้นที่ 5 — ทดสอบรัน API ด้วยมือ (ยังไม่ตั้ง Task)
 
-**4.1** เปิด PowerShell **หน้าต่างใหม่** แล้วรัน:
+**5.1** เปิด PowerShell **หน้าต่างใหม่** แล้วรัน:
 ```powershell
 & (Get-Command node).Source C:\SAP_AUTOPR\api\server.js
 ```
 ต้องเห็นกรอบรายการ endpoint, `Server running on port 3001` และ `Archive Path: C:\SAP_AUTOPR\api\sent-json`
 **เปิดหน้าต่างนี้ค้างไว้**
 
-**4.2** กลับมาที่หน้าต่างหลัก ทดสอบ:
+**5.2** กลับมาที่หน้าต่างหลัก ทดสอบ:
 ```powershell
 $Api = "http://172.40.0.76:$ApiPort/api"
 foreach ($e in "health","test-db","processflow/list","department/list","check-share") {
@@ -181,20 +206,20 @@ Show-Neighbors
 | `test-db` | OK (ถ้า FAIL = ต่อ SQL ไม่ได้ ห้ามไปต่อ) |
 | `processflow/list` | OK และตาราง WebHook ต้องเป็น `http://172.40.0.76:5678/webhook/...` ทั้ง 2 path |
 | `department/list` | OK |
-| `check-share` | OK (ถ้า FAIL = ไม่พบโฟลเดอร์ `D:\interface` ดูขั้นที่ 9) |
+| `check-share` | OK (ถ้า FAIL = ไม่พบโฟลเดอร์ `D:\interface` ดูขั้นที่ 10) |
 
 ถ้า WebHook ใน ProcessFlow ยังไม่ใช่ `172.40.0.76` ให้แก้ด้วย SSMS ก่อน (ดู `update-processflow.sql`)
 
-**4.3** หยุด API ที่รันด้วยมือ: ไปที่หน้าต่างจากข้อ 4.1 แล้วกด **Ctrl+C** (ห้ามใช้ taskkill /IM)
+**5.3** หยุด API ที่รันด้วยมือ: ไปที่หน้าต่างจากข้อ 5.1 แล้วกด **Ctrl+C** (ห้ามใช้ taskkill /IM)
 ```powershell
 Get-SapApiProcess   # must return nothing
 ```
 
 ---
 
-## ขั้นที่ 5 — ตั้ง Scheduled Task `SAP_AUTOPR-API` (รันตลอด และเปิดเองเมื่อเครื่องเปิด)
+## ขั้นที่ 6 — ตั้ง Scheduled Task `SAP_AUTOPR-API` (รันตลอด และเปิดเองเมื่อเครื่องเปิด)
 
-**5.1** สร้างไฟล์สำหรับเปิด API ที่เขียน log ลงไฟล์:
+**6.1** สร้างไฟล์สำหรับเปิด API ที่เขียน log ลงไฟล์:
 ```powershell
 @"
 @echo off
@@ -204,11 +229,12 @@ cd /d $ApiDir
 Get-Content "$ApiDir\start-api.cmd"
 ```
 
-**5.2** สร้าง Task (ระบบจะถามรหัสผ่านของบัญชีที่ใช้รัน):
+**6.2** สร้าง Task (ระบบจะถามรหัสผ่านของบัญชีที่ใช้รัน):
 ```powershell
 if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) { throw "Task $TaskName already exists - check before overwriting" }
 $cred     = Get-Credential -UserName "thaiunion\tuf.operation" -Message "Account that runs SAP_AUTOPR-API (needs write access to the Interface folder)"
 icacls $Root /grant "$($cred.UserName):(OI)(CI)M" | Out-Null   # write logs + sent-json
+icacls $Iface /grant "$($cred.UserName):(OI)(CI)M" | Out-Null  # write Interface files
 $action   = New-ScheduledTaskAction -Execute "$ApiDir\start-api.cmd" -WorkingDirectory $ApiDir
 $trigger  = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Seconds 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable -MultipleInstances IgnoreNew
@@ -234,7 +260,7 @@ Show-Neighbors
 
 ---
 
-## ขั้นที่ 6 — Firewall ของหน้าเว็บ
+## ขั้นที่ 7 — Firewall ของหน้าเว็บ
 
 ```powershell
 if (-not (Get-NetFirewallRule -DisplayName "SAP PR WEB $WebPort" -ErrorAction SilentlyContinue)) {
@@ -246,7 +272,7 @@ Get-NetFirewallRule -DisplayName "SAP PR*" | Select-Object DisplayName, Enabled,
 
 ---
 
-## ขั้นที่ 7 — ติดตั้งหน้าเว็บใน IIS (Site ใหม่ `SAPPR` พอร์ต 8080)
+## ขั้นที่ 8 — ติดตั้งหน้าเว็บใน IIS (Site ใหม่ `SAPPR` พอร์ต 8080)
 
 ```powershell
 if (Get-Website -Name $SiteName -ErrorAction SilentlyContinue) { throw "IIS site $SiteName already exists - check before continuing" }
@@ -283,15 +309,15 @@ Show-Neighbors
 
 ---
 
-## ขั้นที่ 8 — ทดสอบจากเครื่องผู้ใช้ (ไม่ใช่ server)
+## ขั้นที่ 9 — ทดสอบจากเครื่องผู้ใช้ (ไม่ใช่ server)
 
-**8.1** ทดสอบการเชื่อมต่อ (PowerShell บนเครื่องผู้ใช้):
+**9.1** ทดสอบการเชื่อมต่อ (PowerShell บนเครื่องผู้ใช้):
 ```powershell
 foreach ($p in 8080, 3001, 5678) { "Port {0}: {1}" -f $p, (Test-NetConnection 172.40.0.76 -Port $p -InformationLevel Quiet) }
 ```
 ทั้ง 3 พอร์ตต้องเป็น `True` ถ้า 5678 เป็น `False` ให้แจ้งทีม VisionIQ เพื่อเปิด Firewall ของ N8N (เป็นบริการของทีม VisionIQ)
 
-**8.2** ทดสอบการใช้งานในเบราว์เซอร์ที่ `http://172.40.0.76:8080/login.html` (กด Ctrl+F5 ครั้งแรก)
+**9.2** ทดสอบการใช้งานในเบราว์เซอร์ที่ `http://172.40.0.76:8080/login.html` (กด Ctrl+F5 ครั้งแรก)
 
 | # | ทดสอบ | ผลที่ต้องได้ |
 |---|---|---|
@@ -302,12 +328,12 @@ foreach ($p in 8080, 3001, 5678) { "Port {0}: {1}" -f $p, (Test-NetConnection 17
 | 5 | "ค้นหาและเติมข้อมูล" | Items ที่มี S/N ใน Master ถูกเติมข้อมูล |
 | 6 | Preview | JSON ถูกต้อง |
 | 7 | ไม่กรอก Email แล้วกด Send to Interface | มี popup เตือน |
-| 8 | กรอก Email แล้ว Send to Interface | สำเร็จ ไฟล์อยู่ใน `D:\interface` ทันที และขึ้น SharePoint `SAP/Interface_Outbound` หลังประมาณ 5–10 นาที (ขั้นที่ 9.2) |
+| 8 | กรอก Email แล้ว Send to Interface | สำเร็จ ไฟล์อยู่ใน `D:\interface` ทันที และขึ้น SharePoint `SAP/Interface_Outbound` หลังประมาณ 5–10 นาที (ขั้นที่ 10.2) |
 | 8.1 | กด Send to Interface ซ้ำ หรือรีเฟรชหน้าแล้วสแกน PDF เดิมแล้วส่ง | ปุ่มเป็น "✅ ส่งแล้ว" / popup "ส่งไปแล้วเมื่อ …" และไม่มีไฟล์ใหม่ |
 | 9 | เมนู Master Data | แสดงข้อมูล ตัวกรอง Plant ใช้ได้ คอลัมน์ Department แสดง |
 | 10 | เมนู Send History | แสดงรายการ ตัวกรองชื่อไฟล์ใช้ได้ ปุ่ม "แก้ไข / ส่งใหม่" เปิดข้อมูลเดิมได้ |
 
-**8.3** หลังทดสอบเสร็จ กลับไปรันบน server:
+**9.3** หลังทดสอบเสร็จ กลับไปรันบน server:
 ```powershell
 Show-Neighbors
 Get-Content "$LogDir\api.log" -Tail 30 -Encoding UTF8
@@ -315,14 +341,14 @@ Get-Content "$LogDir\api.log" -Tail 30 -Encoding UTF8
 
 ---
 
-## ขั้นที่ 9 — ตรวจโฟลเดอร์ Interface (`D:\interface` → Power Automate → SharePoint)
+## ขั้นที่ 10 — ตรวจโฟลเดอร์ Interface (`D:\interface` → Power Automate → SharePoint)
 
 `server.js` เขียนไฟล์ JSON ลง `D:\interface`
 Power Automate (ผ่าน Gateway) อัปโหลดไป SharePoint `SAP/Interface_Outbound` **หลังไฟล์ถูกสร้าง 5 นาที** แล้วย้ายต้นฉบับไป `D:\interface\Backup`
 
 > ห้ามสร้างไฟล์ทดสอบอื่นใน `D:\interface` เพราะ Power Automate อาจอัปโหลดไป SharePoint ด้วย ให้ทดสอบด้วยการส่งจริงจากหน้าเว็บ (9.2)
 
-**9.1** ตรวจโฟลเดอร์และสิทธิ์ของบัญชีที่รัน Task:
+**10.1** ตรวจโฟลเดอร์และสิทธิ์ของบัญชีที่รัน Task:
 ```powershell
 $Iface = "D:\interface"
 Test-Path $Iface
@@ -335,7 +361,7 @@ Invoke-RestMethod "http://172.40.0.76:$ApiPort/api/check-share"
   icacls $Iface /grant "THAIUNION\tuf.operation:(OI)(CI)M"
   ```
 
-**9.2** ทดสอบจริงจากหน้าเว็บ: Send to Interface 1 ครั้ง แล้วตรวจตามลำดับ:
+**10.2** ทดสอบจริงจากหน้าเว็บ: Send to Interface 1 ครั้ง แล้วตรวจตามลำดับ:
 ```powershell
 Get-ChildItem $Iface -Filter "SAP_PR_*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 3 Name, LastWriteTime
 ```
@@ -353,7 +379,7 @@ Get-ScheduledTask -TaskName SAP_AUTOPR-API | Select-Object TaskName, State
 Get-Content C:\SAP_AUTOPR\logs\api.log -Tail 50 -Encoding UTF8
 ```
 
-**Restart เฉพาะ API** (ไม่กระทบระบบอื่น) — รันขั้นที่ 0 ก่อน แล้ว:
+**Restart เฉพาะ API** (ไม่กระทบระบบอื่น) — รันขั้นที่ 1 ก่อน แล้ว:
 ```powershell
 Stop-SapApi
 Start-ScheduledTask -TaskName $TaskName; Start-Sleep -Seconds 8
@@ -375,7 +401,7 @@ Show-Neighbors
 
 ## ย้อนกลับ (Rollback)
 
-ลบเฉพาะสิ่งที่ SAP PR สร้าง ไม่แตะระบบอื่น รันขั้นที่ 0 ก่อน แล้ว:
+ลบเฉพาะสิ่งที่ SAP PR สร้าง ไม่แตะระบบอื่น รันขั้นที่ 1 ก่อน แล้ว:
 ```powershell
 # 1) API
 Stop-SapApi
@@ -402,11 +428,11 @@ Show-Neighbors
 
 | อาการ | ตรวจ |
 |---|---|
-| หน้าเว็บเปิดไม่ได้ | `Get-Website -Name SAPPR`, Firewall `SAP PR WEB 8080`, ขั้นที่ 8.1 |
+| หน้าเว็บเปิดไม่ได้ | `Get-Website -Name SAPPR`, Firewall `SAP PR WEB 8080`, ขั้นที่ 9.1 |
 | "ทดสอบ API" ไม่ผ่าน | `Get-ScheduledTask SAP_AUTOPR-API`, `api.log`, Firewall `SAP PR API 3001` |
 | `test-db` FAIL | เครือข่ายไป `172.32.0.50:1433`, รหัส `sa` ใน `server.js` |
 | สแกน OCR ไม่ได้ | N8N รันอยู่ไหม (`Show-Neighbors`), พอร์ต 5678 จากเครื่องผู้ใช้, WebHook ใน ProcessFlow, CORS (F12 → Console) |
-| Send to Interface ไม่สำเร็จ | `check-share`, โฟลเดอร์ `D:\interface`, สิทธิ์ของบัญชีที่รัน Task (ขั้นที่ 9.1) |
+| Send to Interface ไม่สำเร็จ | `check-share`, โฟลเดอร์ `D:\interface`, สิทธิ์ของบัญชีที่รัน Task (ขั้นที่ 10.1) |
 | ส่งสำเร็จแต่ไฟล์ค้างใน `D:\interface` เกิน 15 นาที | Power Automate flow และ On-premises Data Gateway ยังทำงานอยู่ไหม (ดูประวัติการรันของ flow) |
 | ปุ่ม "แก้ไข / ส่งใหม่" แจ้งไม่พบไฟล์ | รายการที่ส่งก่อน deploy ไม่มีสำเนา หรือโฟลเดอร์ `sent-json` ไม่มีสิทธิ์เขียน |
 | Task หยุดเอง | `api.log` บรรทัดท้าย, `Get-ScheduledTaskInfo SAP_AUTOPR-API` (LastTaskResult) |
