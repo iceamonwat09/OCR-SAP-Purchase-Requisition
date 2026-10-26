@@ -35,7 +35,7 @@
 
 1. **ไฟล์โปรเจคเวอร์ชันล่าสุด** จาก GitHub branch `claude/setup-developer-workflow-R97LD` (ดาวน์โหลด ZIP แล้วแตกไฟล์ไว้ในเครื่อง)
 2. **บัญชี Windows สำหรับรัน API** ที่มีสิทธิ์เขียนโฟลเดอร์ Interface (เช่น `thaiunion\tuf.operation`) และรหัสผ่านของบัญชีนั้น
-3. **OneDrive บน server** sign in ด้วยบัญชี `tuf.operation` และมี Shortcut `Digital Team - APAC Cluster #1 - Interface_Outbound` แล้ว (ดูขั้นที่ 9)
+3. **โฟลเดอร์ `D:\interface`** และ Power Automate flow (อัปโหลดไป SharePoint หลังไฟล์ถูกสร้าง 5 นาที แล้วย้ายไป `D:\interface\Backup`) พร้อมใช้งาน บัญชีที่รัน API ต้องเขียนโฟลเดอร์นี้ได้ (ดูขั้นที่ 9)
 
 > ใช้ **Windows PowerShell แบบ Run as Administrator** ทุกขั้น
 > โค้ดใน PowerShell เขียนเป็นภาษาอังกฤษเพื่อไม่ให้ตัวอักษรเพี้ยน
@@ -97,7 +97,7 @@ $missing = $need | Where-Object { -not (Test-Path "$Src\$_") }
 if ($missing) { throw "Source folder is missing: $($missing -join ', ')" }
 if (-not (Select-String -Path "$Src\index.html" -Pattern "172.40.0.76:3001" -Quiet)) { throw "index.html is an old version (API URL is not 172.40.0.76)" }
 if (-not (Select-String -Path "$Src\server.js" -Pattern "alreadySent" -Quiet)) { throw "server.js is an old version (no duplicate-send guard)" }
-if (-not (Select-String -Path "$Src\server.js" -Pattern "Interface_Outbound" -Quiet)) { throw "server.js is an old version (Interface path not set)" }
+if (-not (Select-String -Path "$Src\server.js" -Pattern "'D:\\interface'" -SimpleMatch -Quiet)) { throw "server.js is an old version (Interface path is not D:\interface)" }
 "Source OK: $Src"
 "Node: $NodeExe  $(node -v)"
 ```
@@ -181,7 +181,7 @@ Show-Neighbors
 | `test-db` | OK (ถ้า FAIL = ต่อ SQL ไม่ได้ ห้ามไปต่อ) |
 | `processflow/list` | OK และตาราง WebHook ต้องเป็น `http://172.40.0.76:5678/webhook/...` ทั้ง 2 path |
 | `department/list` | OK |
-| `check-share` | OK (ถ้า FAIL = ไม่พบโฟลเดอร์ OneDrive Shortcut ดูขั้นที่ 9) |
+| `check-share` | OK (ถ้า FAIL = ไม่พบโฟลเดอร์ `D:\interface` ดูขั้นที่ 9) |
 
 ถ้า WebHook ใน ProcessFlow ยังไม่ใช่ `172.40.0.76` ให้แก้ด้วย SSMS ก่อน (ดู `update-processflow.sql`)
 
@@ -302,7 +302,7 @@ foreach ($p in 8080, 3001, 5678) { "Port {0}: {1}" -f $p, (Test-NetConnection 17
 | 5 | "ค้นหาและเติมข้อมูล" | Items ที่มี S/N ใน Master ถูกเติมข้อมูล |
 | 6 | Preview | JSON ถูกต้อง |
 | 7 | ไม่กรอก Email แล้วกด Send to Interface | มี popup เตือน |
-| 8 | กรอก Email แล้ว Send to Interface | สำเร็จ และไฟล์ขึ้น SharePoint `SAP/Interface_Outbound` |
+| 8 | กรอก Email แล้ว Send to Interface | สำเร็จ ไฟล์อยู่ใน `D:\interface` ทันที และขึ้น SharePoint `SAP/Interface_Outbound` หลังประมาณ 5–10 นาที (ขั้นที่ 9.2) |
 | 8.1 | กด Send to Interface ซ้ำ หรือรีเฟรชหน้าแล้วสแกน PDF เดิมแล้วส่ง | ปุ่มเป็น "✅ ส่งแล้ว" / popup "ส่งไปแล้วเมื่อ …" และไม่มีไฟล์ใหม่ |
 | 9 | เมนู Master Data | แสดงข้อมูล ตัวกรอง Plant ใช้ได้ คอลัมน์ Department แสดง |
 | 10 | เมนู Send History | แสดงรายการ ตัวกรองชื่อไฟล์ใช้ได้ ปุ่ม "แก้ไข / ส่งใหม่" เปิดข้อมูลเดิมได้ |
@@ -315,35 +315,33 @@ Get-Content "$LogDir\api.log" -Tail 30 -Encoding UTF8
 
 ---
 
-## ขั้นที่ 9 — ตรวจโฟลเดอร์ Interface (OneDrive → SharePoint)
+## ขั้นที่ 9 — ตรวจโฟลเดอร์ Interface (`D:\interface` → Power Automate → SharePoint)
 
-`server.js` เขียนไฟล์ JSON ไปที่
-`C:\Users\tuf.operation\OneDrive - Thai Union Group\Shortcuts\Digital Team - APAC Cluster #1 - Interface_Outbound`
-ซึ่งเป็น OneDrive Shortcut ของบัญชี `tuf.operation` แล้ว OneDrive จะ sync ขึ้น SharePoint `SAP/Interface_Outbound`
+`server.js` เขียนไฟล์ JSON ลง `D:\interface`
+Power Automate (ผ่าน Gateway) อัปโหลดไป SharePoint `SAP/Interface_Outbound` **หลังไฟล์ถูกสร้าง 5 นาที** แล้วย้ายต้นฉบับไป `D:\interface\Backup`
 
-> **สำคัญ:** OneDrive sync เฉพาะตอนบัญชี `tuf.operation` login อยู่บน server
-> เมื่อเลิกใช้ Remote Desktop ให้ **ปิดหน้าต่าง (Disconnect)** ห้าม **Sign out** ถ้า sign out ไฟล์จะค้างอยู่ในเครื่อง และขึ้น SharePoint เมื่อ login กลับ (ไฟล์ไม่หาย)
-> หลัง reboot ต้อง login ด้วย `tuf.operation` (ทำอยู่แล้วเพื่อเปิด N8N) แล้วตรวจว่า OneDrive เปิดอยู่
+> ห้ามสร้างไฟล์ทดสอบอื่นใน `D:\interface` เพราะ Power Automate อาจอัปโหลดไป SharePoint ด้วย ให้ทดสอบด้วยการส่งจริงจากหน้าเว็บ (9.2)
 
-**9.1** ตรวจ OneDrive และโฟลเดอร์:
+**9.1** ตรวจโฟลเดอร์และสิทธิ์ของบัญชีที่รัน Task:
 ```powershell
-$Iface = "C:\Users\tuf.operation\OneDrive - Thai Union Group\Shortcuts\Digital Team - APAC Cluster #1 - Interface_Outbound"
-Get-Process OneDrive -IncludeUserName -ErrorAction SilentlyContinue | Select-Object Id, UserName
+$Iface = "D:\interface"
 Test-Path $Iface
+icacls $Iface
 Invoke-RestMethod "http://172.40.0.76:$ApiPort/api/check-share"
 ```
-ต้องมี OneDrive ของ `THAIUNION\tuf.operation`, `Test-Path` = True และ `check-share` ได้ `success = True`
+- `Test-Path` = True และ `check-share` ได้ `success = True`
+- ใน `icacls` บัญชีที่รัน Task (`THAIUNION\tuf.operation`) หรือกลุ่มที่บัญชีนั้นอยู่ ต้องมีสิทธิ์ `(M)` หรือ `(F)` หรือ `(W)` ถ้าไม่มี ให้เพิ่ม:
+  ```powershell
+  icacls $Iface /grant "THAIUNION\tuf.operation:(OI)(CI)M"
+  ```
 
-**9.2** ทดสอบว่าไฟล์ขึ้น SharePoint ถูกโฟลเดอร์:
+**9.2** ทดสอบจริงจากหน้าเว็บ: Send to Interface 1 ครั้ง แล้วตรวจตามลำดับ:
 ```powershell
-Set-Content "$Iface\_sap_autopr_test.txt" "test from 172.40.0.76"
+Get-ChildItem $Iface -Filter "SAP_PR_*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 3 Name, LastWriteTime
 ```
-เปิด SharePoint `SAP/Interface_Outbound` ภายใน 1–2 นาที ต้องเห็น `_sap_autopr_test.txt` แล้ว**ลบไฟล์ทดสอบ**:
-```powershell
-Remove-Item "$Iface\_sap_autopr_test.txt"
-```
-
-**9.3** ทดสอบจริงจากหน้าเว็บ: Send to Interface 1 ครั้ง แล้วตรวจว่าไฟล์ `SAP_PR_YYYYMMDD_HHMMSS.json` อยู่ใน `$Iface` และขึ้น SharePoint
+1. ทันทีหลังส่ง: ไฟล์ `SAP_PR_YYYYMMDD_HHMMSS.json` อยู่ใน `D:\interface`
+2. หลังประมาณ 5–10 นาที: ไฟล์หายจาก `D:\interface` และไปอยู่ใน `D:\interface\Backup`
+3. เปิด SharePoint `SAP/Interface_Outbound` ต้องเห็นไฟล์เดียวกัน
 
 ---
 
@@ -408,8 +406,8 @@ Show-Neighbors
 | "ทดสอบ API" ไม่ผ่าน | `Get-ScheduledTask SAP_AUTOPR-API`, `api.log`, Firewall `SAP PR API 3001` |
 | `test-db` FAIL | เครือข่ายไป `172.32.0.50:1433`, รหัส `sa` ใน `server.js` |
 | สแกน OCR ไม่ได้ | N8N รันอยู่ไหม (`Show-Neighbors`), พอร์ต 5678 จากเครื่องผู้ใช้, WebHook ใน ProcessFlow, CORS (F12 → Console) |
-| Send to Interface ไม่สำเร็จ | `check-share`, โฟลเดอร์ OneDrive Shortcut, สิทธิ์ของบัญชีที่รัน Task (ขั้นที่ 9) |
-| ส่งสำเร็จแต่ไฟล์ไม่ขึ้น SharePoint | OneDrive ของ `tuf.operation` เปิดอยู่ไหม, บัญชีถูก sign out หรือไม่, ไอคอน OneDrive แสดง error sync หรือไม่ |
+| Send to Interface ไม่สำเร็จ | `check-share`, โฟลเดอร์ `D:\interface`, สิทธิ์ของบัญชีที่รัน Task (ขั้นที่ 9.1) |
+| ส่งสำเร็จแต่ไฟล์ค้างใน `D:\interface` เกิน 15 นาที | Power Automate flow และ On-premises Data Gateway ยังทำงานอยู่ไหม (ดูประวัติการรันของ flow) |
 | ปุ่ม "แก้ไข / ส่งใหม่" แจ้งไม่พบไฟล์ | รายการที่ส่งก่อน deploy ไม่มีสำเนา หรือโฟลเดอร์ `sent-json` ไม่มีสิทธิ์เขียน |
 | Task หยุดเอง | `api.log` บรรทัดท้าย, `Get-ScheduledTaskInfo SAP_AUTOPR-API` (LastTaskResult) |
 | สร้าง Task ไม่ได้ (Access denied / logon failure) | รหัสผ่านบัญชีถูกไหม และบัญชีต้องมีสิทธิ์ "Log on as a batch job" (ผู้ดูแลระบบตั้งให้ได้) |

@@ -35,7 +35,7 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | IIS (หน้าเว็บ) | 172.40.0.76 | 8080 | เว็บ `SAPPR` → `C:\SAP_AUTOPR\web`, Firewall rule "SAP PR WEB 8080" |
 | Node API (`server.js`) | 172.40.0.76 | 3001 | `C:\SAP_AUTOPR\api`, Scheduled Task `SAP_AUTOPR-API`, Firewall rule "SAP PR API 3001" |
 | N8N | 172.40.0.76 | 5678 | ของทีม VisionIQ ใช้ร่วมกัน เครื่องผู้ใช้ต้องเข้าถึงพอร์ตนี้ได้ |
-| โฟลเดอร์ Interface | OneDrive Shortcut ของ `tuf.operation` บน 172.40.0.76 → SharePoint `DigitalTeam-APACCluster1/Shared Documents/SAP/Interface_Outbound` | – | ระบบ SAP Interface อ่านไฟล์ JSON จากที่นี่ |
+| โฟลเดอร์ Interface | `D:\interface` บน 172.40.0.76 → Power Automate (ผ่าน Gateway) อัปโหลดไป SharePoint `DigitalTeam-APACCluster1/Shared Documents/SAP/Interface_Outbound` หลังไฟล์ถูกสร้าง 5 นาที แล้วย้ายต้นฉบับไป `D:\interface\Backup` | – | ระบบ SAP Interface อ่านไฟล์ JSON จาก SharePoint |
 
 ---
 
@@ -196,7 +196,7 @@ Webhook ของ N8N ที่ใช้อยู่ (ต้องอยู่�
 |---|---|---|
 | `server.js` | `PORT` | `3001` |
 | `server.js` | `sqlConfig.server` / `database` | `TUM-OD-DV0-50\SQLEXPRESS` / `SAP_AUTOPR` |
-| `server.js` | `INTERFACE_PATH` | `C:\Users\tuf.operation\OneDrive - Thai Union Group\Shortcuts\Digital Team - APAC Cluster #1 - Interface_Outbound` (OneDrive Shortcut → SharePoint `SAP/Interface_Outbound`) |
+| `server.js` | `INTERFACE_PATH` | `D:\interface` (Power Automate อัปโหลดไป SharePoint `SAP/Interface_Outbound`) |
 | `server.js` | `ARCHIVE_PATH` | `<โฟลเดอร์ของ server.js>\sent-json` |
 | `index.html` | ช่อง `apiUrl` | `http://172.40.0.76:3001/api` |
 | `index.html` | ช่อง `webhookUrl` | `http://172.40.0.76:5678/webhook/7c4fd4bc-...` |
@@ -231,7 +231,7 @@ Webhook ของ N8N ที่ใช้อยู่ (ต้องอยู่�
 - ประวัติที่ส่งก่อนเปิดใช้ `sent-json` ไม่มีสำเนา จึงกด "ส่งใหม่" ไม่ได้
 - Node API ต้องรันตลอดเวลา (ใช้ Scheduled Task `SAP_AUTOPR-API`)
 - N8N ใช้ร่วมกับ VisionIQ และไม่ได้เปิดเองหลัง reboot ถ้า N8N หยุด การสแกน OCR จะใช้ไม่ได้
-- ไฟล์ Interface ขึ้น SharePoint ผ่าน OneDrive sync ของบัญชี `tuf.operation` ต้อง login ค้างไว้บน server (Disconnect ได้ ห้าม Sign out) ถ้าไม่ได้ login ไฟล์จะค้างในเครื่องจนกว่าจะ login
+- "Send to Interface สำเร็จ" หมายถึงไฟล์ถูกเขียนลง `D:\interface` แล้ว ไฟล์จะขึ้น SharePoint หลังจากนั้นประมาณ 5 นาทีขึ้นไป (ขึ้นกับรอบของ Power Automate) ถ้า Power Automate หรือ Gateway หยุด ไฟล์จะค้างใน `D:\interface`
 
 ---
 
@@ -251,5 +251,5 @@ Server นี้มีระบบอื่นรันอยู่: **VisionIQ*
 7. ห้ามเปิด Hyper-V หรือติดตั้ง Docker Desktop โดยไม่แจ้ง
 
 **ทั่วไป**
-8. ไฟล์ทั้งหมดของ SAP PR อยู่ใน `C:\SAP_AUTOPR\` เท่านั้น ห้ามแตะ `C:\VisionIQ\` และเว็บ IIS อื่น (Default Web Site, VisionIQ)
+8. ไฟล์ทั้งหมดของ SAP PR อยู่ใน `C:\SAP_AUTOPR\` เท่านั้น ยกเว้นโฟลเดอร์ส่ง Interface `D:\interface` ที่ Power Automate อ่าน ห้ามแตะ `C:\VisionIQ\` และเว็บ IIS อื่น (Default Web Site, VisionIQ)
 9. ถ้าต้อง restart เครื่อง ต้องแจ้งทีม VisionIQ ก่อนเสมอ เพราะ N8N ต้องเปิดเองหลัง reboot
