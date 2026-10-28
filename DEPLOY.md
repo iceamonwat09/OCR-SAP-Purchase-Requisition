@@ -445,17 +445,12 @@ Show-Neighbors
 
 ## เริ่มระบบและตรวจความพร้อม (สคริปต์เดียว)
 
-ไฟล์ `start-sap-pr.ps1` เริ่มทุกส่วนของ SAP PR ที่หยุดอยู่ (gateway `PBIEgwService`, เว็บ IIS `SAPPR`, Task `SAP_AUTOPR-API`) แล้วตรวจความพร้อมทั้งระบบ ไม่เริ่มหรือหยุด VisionIQ/N8N และไม่เขียนไฟล์ลง `D:\interface` รายละเอียดอยู่ใน [README.md](README.md) หัวข้อ 12
+`start-sap-pr.ps1` เริ่มส่วนของ SAP PR ที่หยุดอยู่ (gateway `PBIEgwService`, เว็บ IIS `SAPPR`, Task `SAP_AUTOPR-API`) แล้วตรวจความพร้อม ไม่เริ่มหรือหยุด VisionIQ/N8N และไม่เขียนไฟล์ลง `D:\interface` รายละเอียดอยู่ใน [README.md](README.md) หัวข้อ 12
 
-**ติดตั้งสคริปต์ (ครั้งเดียว)** คัดลอกจากโฟลเดอร์ที่แตกจาก ZIP ล่าสุด:
+**ติดตั้ง (ครั้งเดียว)** คัดลอกจากโฟลเดอร์ที่แตกจาก ZIP ล่าสุด:
 ```powershell
 $Latest = Get-ChildItem "C:\SAP_AUTOPR\_src" -Directory | Sort-Object Name -Descending | Select-Object -First 1
 $Script = Get-ChildItem $Latest.FullName -Recurse -Filter start-sap-pr.ps1 | Select-Object -First 1
 Copy-Item $Script.FullName "C:\SAP_AUTOPR\start-sap-pr.ps1" -Force
 ```
-**ใช้งาน** (PowerShell แบบ Run as administrator):
-```powershell
-C:\SAP_AUTOPR\start-sap-pr.ps1               # เริ่มส่วนที่หยุด แล้วตรวจ
-C:\SAP_AUTOPR\start-sap-pr.ps1 -CheckOnly    # ตรวจอย่างเดียว
-```
-ผลที่ต้องได้คือ `RESULT: SYSTEM READY` ถ้ามี `WARN` หรือ `FAIL` ให้ดูตาราง "ความหมายของ WARN/FAIL ที่พบบ่อย" ใน README หัวข้อ 12
+**ใช้งาน** (PowerShell แบบ Run as administrator): `C:\SAP_AUTOPR\start-sap-pr.ps1` หรือ `-CheckOnly` เพื่อตรวจอย่างเดียว ผลที่ต้องได้คือ `SYSTEM READY`

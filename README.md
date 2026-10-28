@@ -54,7 +54,7 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | `migration.sql` | – | สร้าง/เพิ่มคอลัมน์และตาราง (รันครั้งเดียว รันซ้ำได้) |
 | `update-processflow.sql` | – | (ไม่บังคับ) เปลี่ยน `ProcessFlow.WebHook` ให้ชี้ไป N8N `172.40.0.76` ใช้เฉพาะเมื่อในตารางยังเป็น URL เดิม |
 | `DEPLOY.md` | – | คู่มือ Deploy บน Server 172.40.0.76 ทีละขั้นแบบปลอดภัย |
-| `start-sap-pr.ps1` | `C:\SAP_AUTOPR` | สคริปต์เดียว: เริ่มทุกส่วนของ SAP PR ที่หยุดอยู่ + ตรวจความพร้อมและสถานะ (หัวข้อ 12) |
+| `start-sap-pr.ps1` | `C:\SAP_AUTOPR` | สคริปต์เดียว: เริ่มส่วนของ SAP PR ที่หยุดอยู่ + ตรวจความพร้อม (หัวข้อ 12) |
 
 > **ห้ามวาง `server.js` ในโฟลเดอร์เว็บของ IIS** เพราะในไฟล์มีรหัสผ่าน SQL และ IIS จะเปิดให้ดาวน์โหลดไฟล์ `.js` ได้
 
@@ -261,41 +261,25 @@ Server นี้มีระบบอื่นรันอยู่: **VisionIQ*
 
 ## 12. เริ่มระบบและตรวจความพร้อม (`start-sap-pr.ps1`)
 
-สคริปต์เดียวที่ **เริ่มทุกส่วนของ SAP PR ที่หยุดอยู่** แล้ว **ตรวจความพร้อมและแสดงสถานะ** เปิด PowerShell แบบ Run as administrator บน server แล้วรัน
+สคริปต์เดียว (ประมาณ 40 บรรทัด) เปิด PowerShell แบบ Run as administrator บน server แล้วรัน
 
 ```powershell
-C:\SAP_AUTOPR\start-sap-pr.ps1               # เริ่มส่วนที่หยุด แล้วตรวจ
-C:\SAP_AUTOPR\start-sap-pr.ps1 -CheckOnly    # ตรวจอย่างเดียว ไม่เปลี่ยนอะไร (ใช้ได้ทุกเมื่อ)
+C:\SAP_AUTOPR\start-sap-pr.ps1               # เริ่มส่วนที่หยุดอยู่ แล้วตรวจ
+C:\SAP_AUTOPR\start-sap-pr.ps1 -CheckOnly    # ตรวจอย่างเดียว ไม่เปลี่ยนอะไร
 ```
 ถ้าเครื่องไม่ยอมรันไฟล์ `.ps1` ให้ใช้ `powershell -ExecutionPolicy Bypass -File C:\SAP_AUTOPR\start-sap-pr.ps1`
 
-**สิ่งที่สคริปต์เริ่ม (เฉพาะที่หยุดอยู่)**
-| ส่วน | ชื่อ |
+| เริ่มให้ (เฉพาะที่หยุดอยู่) | ตรวจ |
 |---|---|
-| Power Automate gateway | Windows Service `PBIEgwService` |
-| IIS | App Pool และเว็บ `SAPPR` (พอร์ต 8080) |
-| API | Scheduled Task `SAP_AUTOPR-API` (พอร์ต 3001) |
+| Windows Service `PBIEgwService` (gateway) | Task `SAP_AUTOPR-API` = Running |
+| IIS App Pool + เว็บ `SAPPR` | API `/health` และฐานข้อมูล `/test-db` |
+| Task `SAP_AUTOPR-API` | เว็บ `login.html` = 200 |
+| | gateway = Running |
+| | `D:\interface` มีอยู่ และไม่มีไฟล์ค้างเกิน 20 นาที (ถ้ามีแปลว่า Power Automate หรือ gateway ไม่ทำงาน) |
+| | N8N `:5678` ตอบ (อ่านอย่างเดียว) |
 
-**สิ่งที่สคริปต์ตรวจ**
-API (Task, process, `/health`), ฐานข้อมูล (`/test-db`, WebHook ใน `ProcessFlow` ต้องชี้ `172.40.0.76:5678`), หน้าเว็บ (`login.html` = 200, `server.js` ต้อง = 404), gateway, โฟลเดอร์ `D:\interface` และ `Backup`, ไฟล์ที่ค้างรอ Power Automate เกิน 20 นาที, Firewall `SAP PR API 3001` และ `SAP PR WEB 8080`, N8N และ VisionIQ (อ่านอย่างเดียว), พื้นที่ว่างไดรฟ์ C: และ D:, ขนาด `api.log`
+ผลเป็น `OK` / `FAIL` ต่อรายการ และสรุป `SYSTEM READY` หรือ `NOT READY`
 
-สถานะแต่ละรายการคือ `OK` / `INFO` / `WARN` / `FAIL` และบรรทัดสุดท้ายสรุปเป็น `SYSTEM READY`, `READY WITH WARNINGS` หรือ `NOT READY` พร้อมบันทึกรายงานที่ `C:\SAP_AUTOPR\logs\health-<วันเวลา>.txt`
-
-**ความปลอดภัยของสคริปต์**
-- **ไม่เริ่ม ไม่หยุด และไม่ kill VisionIQ หรือ N8N** ตรวจอย่างเดียว ถ้า N8N ล่มจะขึ้น `FAIL` และต้องแจ้งทีม VisionIQ ให้เปิดเอง (ตามข้อตกลงหัวข้อ 11 ข้อ 9)
+- **ไม่เริ่ม ไม่หยุด และไม่ kill VisionIQ หรือ N8N** ถ้า N8N ขึ้น `FAIL` ให้แจ้งทีม VisionIQ เปิดเอง (ข้อตกลงหัวข้อ 11 ข้อ 9)
 - **ไม่เขียนไฟล์ใดๆ ลง `D:\interface`** เพราะ Power Automate จะอัปโหลดไฟล์นั้นไป SharePoint ให้ SAP
-- ไม่หยุดสิ่งใดเลย ไม่แตะ Default Web Site, เว็บ VisionIQ, Task `VisionIQ-Waitress` และ Firewall rule อื่น
-
-**ตอนเครื่อง reboot (ต้องแจ้งทีม VisionIQ ก่อนเสมอ)**
-1. ทีม VisionIQ เปิด N8N
-2. Task `SAP_AUTOPR-API` เปิด API เองตอนเครื่องเปิด (ตั้งเป็น AtStartup)
-3. รัน `start-sap-pr.ps1` เพื่อเริ่มส่วนที่ยังไม่ขึ้น (เช่น gateway หรือเว็บ) และตรวจว่าทุกอย่างเป็น `OK`
-
-**ความหมายของ WARN/FAIL ที่พบบ่อย**
-| ข้อความ | ทำอย่างไร |
-|---|---|
-| `Files waiting for Power Automate ... older than 20 min` | ตรวจ flow ใน Power Automate (ประวัติการรัน) และ gateway ว่ายังทำงานอยู่ |
-| `Gateway service PBIEgwService ... Stopped` | รันสคริปต์ไม่ใส่ `-CheckOnly` เพื่อเริ่ม ถ้าเริ่มไม่ได้ให้ดู Event Viewer |
-| `N8N (OCR) :5678 ... FAIL` | แจ้งทีม VisionIQ ให้เปิด N8N (ผู้ใช้สแกน OCR ไม่ได้ระหว่างนี้) |
-| `ProcessFlow webhooks ... do not point to 172.40.0.76:5678` | แก้ค่าในตาราง `ProcessFlow` ตาม `update-processflow.sql` (ถ้าระบบเดิมยังใช้ตารางนี้ ให้ตกลงก่อน) |
-| `api.log size ... MB` | หยุด API ด้วย `Stop-ScheduledTask SAP_AUTOPR-API` แล้วย้ายไฟล์ log ไปเก็บ จากนั้น `Start-ScheduledTask SAP_AUTOPR-API` |
+- ตอน reboot: ทีม VisionIQ เปิด N8N, Task เปิด API เอง แล้วรันสคริปต์นี้เพื่อเริ่มส่วนที่ยังไม่ขึ้นและตรวจว่า `SYSTEM READY`
