@@ -20,8 +20,9 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
  │                  login/index/master/history.html, auth-config │
  │ N8N :5678      → workflow OCR (Google Vertex) ใช้ร่วมกับ VisionIQ │
  │ VisionIQ :8000 → ระบบอื่น (ห้ามแตะ ดูหัวข้อ 11)               │
+ │ PBIEgwService → On-premises data gateway ของ Power Automate   │
  │ Node API :3001 → server.js ──┬─► SQL Server (DB)              │
- │                              ├─► โฟลเดอร์ Interface (JSON)     │
+ │                              ├─► D:\interface (JSON) ──► Power Automate ──► SharePoint │
  │                              └─► sent-json/YYYY-MM/ (สำเนา)    │
  └───────────────────────────────────────────────────────────────┘
  SQL Server : 172.32.0.50  (TUM-OD-DV0-50\SQLEXPRESS, database SAP_AUTOPR)
@@ -35,6 +36,7 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | IIS (หน้าเว็บ) | 172.40.0.76 | 8080 | เว็บ `SAPPR` → `C:\SAP_AUTOPR\web`, Firewall rule "SAP PR WEB 8080" |
 | Node API (`server.js`) | 172.40.0.76 | 3001 | `C:\SAP_AUTOPR\api`, Scheduled Task `SAP_AUTOPR-API`, Firewall rule "SAP PR API 3001" |
 | N8N | 172.40.0.76 | 5678 | ของทีม VisionIQ ใช้ร่วมกัน เครื่องผู้ใช้ต้องเข้าถึงพอร์ตนี้ได้ |
+| On-premises data gateway | 172.40.0.76 | – | Windows Service `PBIEgwService` ให้ Power Automate อ่าน `D:\interface` ได้ ถ้าหยุด ไฟล์จะค้างในโฟลเดอร์ |
 | โฟลเดอร์ Interface | `D:\interface` บน 172.40.0.76 → Power Automate (ผ่าน Gateway) อัปโหลดไป SharePoint `DigitalTeam-APACCluster1/Shared Documents/SAP/Interface_Outbound` หลังไฟล์ถูกสร้าง 5 นาที แล้วย้ายต้นฉบับไป `D:\interface\Backup` | – | ระบบ SAP Interface อ่านไฟล์ JSON จาก SharePoint |
 
 ---
@@ -52,6 +54,7 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | `migration.sql` | – | สร้าง/เพิ่มคอลัมน์และตาราง (รันครั้งเดียว รันซ้ำได้) |
 | `update-processflow.sql` | – | (ไม่บังคับ) เปลี่ยน `ProcessFlow.WebHook` ให้ชี้ไป N8N `172.40.0.76` ใช้เฉพาะเมื่อในตารางยังเป็น URL เดิม |
 | `DEPLOY.md` | – | คู่มือ Deploy บน Server 172.40.0.76 ทีละขั้นแบบปลอดภัย |
+| `start-sap-pr.ps1` | `C:\SAP_AUTOPR` | สคริปต์เดียว: เริ่มทุกส่วนของ SAP PR ที่หยุดอยู่ + ตรวจความพร้อมและสถานะ (หัวข้อ 12) |
 
 > **ห้ามวาง `server.js` ในโฟลเดอร์เว็บของ IIS** เพราะในไฟล์มีรหัสผ่าน SQL และ IIS จะเปิดให้ดาวน์โหลดไฟล์ `.js` ได้
 
@@ -253,3 +256,46 @@ Server นี้มีระบบอื่นรันอยู่: **VisionIQ*
 **ทั่วไป**
 8. ไฟล์ทั้งหมดของ SAP PR อยู่ใน `C:\SAP_AUTOPR\` เท่านั้น ยกเว้นโฟลเดอร์ส่ง Interface `D:\interface` ที่ Power Automate อ่าน ห้ามแตะ `C:\VisionIQ\` และเว็บ IIS อื่น (Default Web Site, VisionIQ)
 9. ถ้าต้อง restart เครื่อง ต้องแจ้งทีม VisionIQ ก่อนเสมอ เพราะ N8N ต้องเปิดเองหลัง reboot
+
+---
+
+## 12. เริ่มระบบและตรวจความพร้อม (`start-sap-pr.ps1`)
+
+สคริปต์เดียวที่ **เริ่มทุกส่วนของ SAP PR ที่หยุดอยู่** แล้ว **ตรวจความพร้อมและแสดงสถานะ** เปิด PowerShell แบบ Run as administrator บน server แล้วรัน
+
+```powershell
+C:\SAP_AUTOPR\start-sap-pr.ps1               # เริ่มส่วนที่หยุด แล้วตรวจ
+C:\SAP_AUTOPR\start-sap-pr.ps1 -CheckOnly    # ตรวจอย่างเดียว ไม่เปลี่ยนอะไร (ใช้ได้ทุกเมื่อ)
+```
+ถ้าเครื่องไม่ยอมรันไฟล์ `.ps1` ให้ใช้ `powershell -ExecutionPolicy Bypass -File C:\SAP_AUTOPR\start-sap-pr.ps1`
+
+**สิ่งที่สคริปต์เริ่ม (เฉพาะที่หยุดอยู่)**
+| ส่วน | ชื่อ |
+|---|---|
+| Power Automate gateway | Windows Service `PBIEgwService` |
+| IIS | App Pool และเว็บ `SAPPR` (พอร์ต 8080) |
+| API | Scheduled Task `SAP_AUTOPR-API` (พอร์ต 3001) |
+
+**สิ่งที่สคริปต์ตรวจ**
+API (Task, process, `/health`), ฐานข้อมูล (`/test-db`, WebHook ใน `ProcessFlow` ต้องชี้ `172.40.0.76:5678`), หน้าเว็บ (`login.html` = 200, `server.js` ต้อง = 404), gateway, โฟลเดอร์ `D:\interface` และ `Backup`, ไฟล์ที่ค้างรอ Power Automate เกิน 20 นาที, Firewall `SAP PR API 3001` และ `SAP PR WEB 8080`, N8N และ VisionIQ (อ่านอย่างเดียว), พื้นที่ว่างไดรฟ์ C: และ D:, ขนาด `api.log`
+
+สถานะแต่ละรายการคือ `OK` / `INFO` / `WARN` / `FAIL` และบรรทัดสุดท้ายสรุปเป็น `SYSTEM READY`, `READY WITH WARNINGS` หรือ `NOT READY` พร้อมบันทึกรายงานที่ `C:\SAP_AUTOPR\logs\health-<วันเวลา>.txt`
+
+**ความปลอดภัยของสคริปต์**
+- **ไม่เริ่ม ไม่หยุด และไม่ kill VisionIQ หรือ N8N** ตรวจอย่างเดียว ถ้า N8N ล่มจะขึ้น `FAIL` และต้องแจ้งทีม VisionIQ ให้เปิดเอง (ตามข้อตกลงหัวข้อ 11 ข้อ 9)
+- **ไม่เขียนไฟล์ใดๆ ลง `D:\interface`** เพราะ Power Automate จะอัปโหลดไฟล์นั้นไป SharePoint ให้ SAP
+- ไม่หยุดสิ่งใดเลย ไม่แตะ Default Web Site, เว็บ VisionIQ, Task `VisionIQ-Waitress` และ Firewall rule อื่น
+
+**ตอนเครื่อง reboot (ต้องแจ้งทีม VisionIQ ก่อนเสมอ)**
+1. ทีม VisionIQ เปิด N8N
+2. Task `SAP_AUTOPR-API` เปิด API เองตอนเครื่องเปิด (ตั้งเป็น AtStartup)
+3. รัน `start-sap-pr.ps1` เพื่อเริ่มส่วนที่ยังไม่ขึ้น (เช่น gateway หรือเว็บ) และตรวจว่าทุกอย่างเป็น `OK`
+
+**ความหมายของ WARN/FAIL ที่พบบ่อย**
+| ข้อความ | ทำอย่างไร |
+|---|---|
+| `Files waiting for Power Automate ... older than 20 min` | ตรวจ flow ใน Power Automate (ประวัติการรัน) และ gateway ว่ายังทำงานอยู่ |
+| `Gateway service PBIEgwService ... Stopped` | รันสคริปต์ไม่ใส่ `-CheckOnly` เพื่อเริ่ม ถ้าเริ่มไม่ได้ให้ดู Event Viewer |
+| `N8N (OCR) :5678 ... FAIL` | แจ้งทีม VisionIQ ให้เปิด N8N (ผู้ใช้สแกน OCR ไม่ได้ระหว่างนี้) |
+| `ProcessFlow webhooks ... do not point to 172.40.0.76:5678` | แก้ค่าในตาราง `ProcessFlow` ตาม `update-processflow.sql` (ถ้าระบบเดิมยังใช้ตารางนี้ ให้ตกลงก่อน) |
+| `api.log size ... MB` | หยุด API ด้วย `Stop-ScheduledTask SAP_AUTOPR-API` แล้วย้ายไฟล์ log ไปเก็บ จากนั้น `Start-ScheduledTask SAP_AUTOPR-API` |

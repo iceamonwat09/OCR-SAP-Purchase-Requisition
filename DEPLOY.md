@@ -30,6 +30,9 @@
 | Firewall `SAP PR API 3001` | ✅ |
 | โฟลเดอร์ `C:\SAP_AUTOPR\api` (มี `package.json`, `node_modules` ที่เป็น Express 5) | ✅ จะติดตั้งใหม่เป็น Express 4 ในขั้นที่ 4 |
 | Workflow N8N 2 ตัว Publish แล้ว | ✅ |
+| ตาราง `ProcessFlow` ชี้ N8N `172.40.0.76` | ✅ |
+| ขั้นที่ 0–9 (ดาวน์โหลด, ติดตั้ง API, Task, Firewall, เว็บ IIS, ทดสอบจากเครื่องผู้ใช้) | ✅ Deploy เสร็จแล้ว เหลือขั้นที่ 10 (ทดสอบส่งจริงไป SAP) |
+| สคริปต์เริ่มระบบและตรวจความพร้อม `start-sap-pr.ps1` | ✅ ดูหัวข้อ "เริ่มระบบและตรวจความพร้อม" ท้ายคู่มือ |
 
 ## ข้อมูลที่ต้องมีก่อนเริ่ม
 
@@ -437,3 +440,22 @@ Show-Neighbors
 | ปุ่ม "แก้ไข / ส่งใหม่" แจ้งไม่พบไฟล์ | รายการที่ส่งก่อน deploy ไม่มีสำเนา หรือโฟลเดอร์ `sent-json` ไม่มีสิทธิ์เขียน |
 | Task หยุดเอง | `api.log` บรรทัดท้าย, `Get-ScheduledTaskInfo SAP_AUTOPR-API` (LastTaskResult) |
 | สร้าง Task ไม่ได้ (Access denied / logon failure) | รหัสผ่านบัญชีถูกไหม และบัญชีต้องมีสิทธิ์ "Log on as a batch job" (ผู้ดูแลระบบตั้งให้ได้) |
+
+---
+
+## เริ่มระบบและตรวจความพร้อม (สคริปต์เดียว)
+
+ไฟล์ `start-sap-pr.ps1` เริ่มทุกส่วนของ SAP PR ที่หยุดอยู่ (gateway `PBIEgwService`, เว็บ IIS `SAPPR`, Task `SAP_AUTOPR-API`) แล้วตรวจความพร้อมทั้งระบบ ไม่เริ่มหรือหยุด VisionIQ/N8N และไม่เขียนไฟล์ลง `D:\interface` รายละเอียดอยู่ใน [README.md](README.md) หัวข้อ 12
+
+**ติดตั้งสคริปต์ (ครั้งเดียว)** คัดลอกจากโฟลเดอร์ที่แตกจาก ZIP ล่าสุด:
+```powershell
+$Latest = Get-ChildItem "C:\SAP_AUTOPR\_src" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$Script = Get-ChildItem $Latest.FullName -Recurse -Filter start-sap-pr.ps1 | Select-Object -First 1
+Copy-Item $Script.FullName "C:\SAP_AUTOPR\start-sap-pr.ps1" -Force
+```
+**ใช้งาน** (PowerShell แบบ Run as administrator):
+```powershell
+C:\SAP_AUTOPR\start-sap-pr.ps1               # เริ่มส่วนที่หยุด แล้วตรวจ
+C:\SAP_AUTOPR\start-sap-pr.ps1 -CheckOnly    # ตรวจอย่างเดียว
+```
+ผลที่ต้องได้คือ `RESULT: SYSTEM READY` ถ้ามี `WARN` หรือ `FAIL` ให้ดูตาราง "ความหมายของ WARN/FAIL ที่พบบ่อย" ใน README หัวข้อ 12
