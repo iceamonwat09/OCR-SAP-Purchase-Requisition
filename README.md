@@ -54,7 +54,7 @@ Thai Union Group – IT Support | เวอร์ชันหน้าเว็�
 | `migration.sql` | – | สร้าง/เพิ่มคอลัมน์และตาราง (รันครั้งเดียว รันซ้ำได้) |
 | `update-processflow.sql` | – | (ไม่บังคับ) เปลี่ยน `ProcessFlow.WebHook` ให้ชี้ไป N8N `172.40.0.76` ใช้เฉพาะเมื่อในตารางยังเป็น URL เดิม |
 | `DEPLOY.md` | – | คู่มือ Deploy บน Server 172.40.0.76 ทีละขั้นแบบปลอดภัย |
-| `start-sap-pr.ps1` | `C:\SAP_AUTOPR` | สคริปต์เดียว: เริ่มส่วนของ SAP PR ที่หยุดอยู่ + ตรวจความพร้อม (หัวข้อ 12) |
+| `start-sap-pr.ps1` | `C:\SAP_AUTOPR` | สคริปต์เริ่มระบบ SAP PR (หัวข้อ 12) |
 
 > **ห้ามวาง `server.js` ในโฟลเดอร์เว็บของ IIS** เพราะในไฟล์มีรหัสผ่าน SQL และ IIS จะเปิดให้ดาวน์โหลดไฟล์ `.js` ได้
 
@@ -259,27 +259,22 @@ Server นี้มีระบบอื่นรันอยู่: **VisionIQ*
 
 ---
 
-## 12. เริ่มระบบและตรวจความพร้อม (`start-sap-pr.ps1`)
+## 12. เริ่มระบบ (`start-sap-pr.ps1`)
 
-สคริปต์เดียว (ประมาณ 40 บรรทัด) เปิด PowerShell แบบ Run as administrator บน server แล้วรัน
+สคริปต์สั้นสำหรับเริ่มทุกส่วนของ SAP PR รันใน PowerShell แบบ Run as administrator (รันซ้ำได้ ส่วนที่เปิดอยู่แล้วจะไม่ถูกเปิดซ้ำ)
 
 ```powershell
-C:\SAP_AUTOPR\start-sap-pr.ps1               # เริ่มส่วนที่หยุดอยู่ แล้วตรวจ
-C:\SAP_AUTOPR\start-sap-pr.ps1 -CheckOnly    # ตรวจอย่างเดียว ไม่เปลี่ยนอะไร
+powershell -ExecutionPolicy Bypass -File C:\SAP_AUTOPR\start-sap-pr.ps1
 ```
-ถ้าเครื่องไม่ยอมรันไฟล์ `.ps1` ให้ใช้ `powershell -ExecutionPolicy Bypass -File C:\SAP_AUTOPR\start-sap-pr.ps1`
+ผลที่ต้องได้: `API: ok`
 
-| เริ่มให้ (เฉพาะที่หยุดอยู่) | ตรวจ |
+| เริ่ม | รายละเอียด |
 |---|---|
-| Windows Service `PBIEgwService` (gateway) | Task `SAP_AUTOPR-API` = Running |
-| IIS App Pool + เว็บ `SAPPR` | API `/health` และฐานข้อมูล `/test-db` |
-| Task `SAP_AUTOPR-API` | เว็บ `login.html` = 200 |
-| | gateway = Running |
-| | `D:\interface` มีอยู่ และไม่มีไฟล์ค้างเกิน 20 นาที (ถ้ามีแปลว่า Power Automate หรือ gateway ไม่ทำงาน) |
-| | N8N `:5678` ตอบ (อ่านอย่างเดียว) |
+| Gateway `PBIEgwService` | Windows Service ของ Power Automate |
+| IIS App Pool + เว็บ `SAPPR` | หน้าเว็บพอร์ต 8080 |
+| API `node server.js` | เปิดแบบซ่อนหน้าต่างถ้าพอร์ต 3001 ว่าง log ที่ `C:\SAP_AUTOPR\logs\api.log` และ `api-error.log` แล้วรอจน `/api/health` ตอบ (สูงสุด 30 วินาที) |
 
-ผลเป็น `OK` / `FAIL` ต่อรายการ และสรุป `SYSTEM READY` หรือ `NOT READY`
-
-- **ไม่เริ่ม ไม่หยุด และไม่ kill VisionIQ หรือ N8N** ถ้า N8N ขึ้น `FAIL` ให้แจ้งทีม VisionIQ เปิดเอง (ข้อตกลงหัวข้อ 11 ข้อ 9)
-- **ไม่เขียนไฟล์ใดๆ ลง `D:\interface`** เพราะ Power Automate จะอัปโหลดไฟล์นั้นไป SharePoint ให้ SAP
-- ตอน reboot: ทีม VisionIQ เปิด N8N, Task เปิด API เอง แล้วรันสคริปต์นี้เพื่อเริ่มส่วนที่ยังไม่ขึ้นและตรวจว่า `SYSTEM READY`
+- **ไม่แตะ N8N และ VisionIQ** (N8N ต้องให้ทีม VisionIQ เปิดเอง)
+- API ที่เปิดด้วยสคริปต์นี้ผูกกับบัญชีที่ login อยู่ เลิกใช้ Remote Desktop ให้กด **Disconnect** ห้าม **Sign out** ไม่งั้น API จะหยุด
+- **หลัง reboot:** ทีม VisionIQ เปิด N8N แล้วรันสคริปต์นี้ (ถ้าต้องการให้ API เปิดเองอัตโนมัติ ใช้ Scheduled Task ตาม DEPLOY ขั้นที่ 6 แทน)
+- หยุดเฉพาะ API: `Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object CommandLine -like '*C:\SAP_AUTOPR\api\server.js*' | ForEach-Object { taskkill /PID $_.ProcessId /F }` (ห้ามใช้ `taskkill /IM node.exe` เพราะจะปิด N8N)

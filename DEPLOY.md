@@ -32,7 +32,7 @@
 | Workflow N8N 2 ตัว Publish แล้ว | ✅ |
 | ตาราง `ProcessFlow` ชี้ N8N `172.40.0.76` | ✅ |
 | ขั้นที่ 0–9 (ดาวน์โหลด, ติดตั้ง API, Task, Firewall, เว็บ IIS, ทดสอบจากเครื่องผู้ใช้) | ✅ Deploy เสร็จแล้ว เหลือขั้นที่ 10 (ทดสอบส่งจริงไป SAP) |
-| สคริปต์เริ่มระบบและตรวจความพร้อม `start-sap-pr.ps1` | ✅ ดูหัวข้อ "เริ่มระบบและตรวจความพร้อม" ท้ายคู่มือ |
+| สคริปต์เริ่มระบบ `start-sap-pr.ps1` (API เปิดด้วยสคริปต์ ยังไม่ได้ตั้ง Task ขั้นที่ 6) | ✅ ดูหัวข้อ "เริ่มระบบ" ท้ายคู่มือ |
 
 ## ข้อมูลที่ต้องมีก่อนเริ่ม
 
@@ -443,14 +443,11 @@ Show-Neighbors
 
 ---
 
-## เริ่มระบบและตรวจความพร้อม (สคริปต์เดียว)
+## เริ่มระบบ (สคริปต์เดียว)
 
-`start-sap-pr.ps1` เริ่มส่วนของ SAP PR ที่หยุดอยู่ (gateway `PBIEgwService`, เว็บ IIS `SAPPR`, Task `SAP_AUTOPR-API`) แล้วตรวจความพร้อม ไม่เริ่มหรือหยุด VisionIQ/N8N และไม่เขียนไฟล์ลง `D:\interface` รายละเอียดอยู่ใน [README.md](README.md) หัวข้อ 12
+ใช้ `start-sap-pr.ps1` เริ่ม gateway, เว็บ IIS `SAPPR` และ API (เปิด `node server.js` ตรงแบบซ่อนหน้าต่าง ถ้าพอร์ต 3001 ว่าง) แล้วรอจน `/api/health` ตอบ ไม่แตะ N8N และ VisionIQ รายละเอียดอยู่ใน [README.md](README.md) หัวข้อ 12
 
-**ติดตั้ง (ครั้งเดียว)** คัดลอกจากโฟลเดอร์ที่แตกจาก ZIP ล่าสุด:
 ```powershell
-$Latest = Get-ChildItem "C:\SAP_AUTOPR\_src" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-$Script = Get-ChildItem $Latest.FullName -Recurse -Filter start-sap-pr.ps1 | Select-Object -First 1
-Copy-Item $Script.FullName "C:\SAP_AUTOPR\start-sap-pr.ps1" -Force
+powershell -ExecutionPolicy Bypass -File C:\SAP_AUTOPR\start-sap-pr.ps1
 ```
-**ใช้งาน** (PowerShell แบบ Run as administrator): `C:\SAP_AUTOPR\start-sap-pr.ps1` หรือ `-CheckOnly` เพื่อตรวจอย่างเดียว ผลที่ต้องได้คือ `SYSTEM READY`
+ผลที่ต้องได้คือ `API: ok` (ใช้แทน Scheduled Task ในขั้นที่ 6 ได้ แต่ต้องรันเองหลัง reboot และห้าม Sign out บัญชีที่รัน)
